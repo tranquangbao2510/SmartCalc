@@ -1,0 +1,7 @@
+<Project>
+  <!-- Áp dụng cho mọi project trong solution: không chấp nhận warning (warning = lỗi build). -->
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+</Project>

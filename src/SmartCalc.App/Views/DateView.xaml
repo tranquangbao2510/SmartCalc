@@ -1,0 +1,125 @@
+<UserControl x:Class="SmartCalc.App.Views.DateView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Chế độ Ngày tháng (DataContext = DateViewModel). Ngày nhập dạng dd/MM/yyyy. -->
+    <UserControl.Resources>
+        <!-- Dòng chú thích dưới ô ngày: thứ trong tuần, hoặc lỗi (đỏ) khi Tag = True -->
+        <Style x:Key="DateInfo" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Margin" Value="2,6,0,0"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Foreground" Value="{DynamicResource SubtleTextBrush}"/>
+            <Style.Triggers>
+                <Trigger Property="Tag" Value="{StaticResource True}">
+                    <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="TodayButton" TargetType="Button" BasedOn="{StaticResource PillButton}">
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="Margin" Value="8,0,0,0"/>
+            <Setter Property="Content" Value="Hôm nay"/>
+        </Style>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="0,0,4,0" MaxWidth="720" HorizontalAlignment="Stretch">
+            <!-- Tab -->
+            <StackPanel Orientation="Horizontal" Margin="6,0,0,8">
+                <RadioButton Style="{StaticResource TabRadio}" GroupName="DateTab" Content="Khoảng cách giữa hai ngày"
+                             IsChecked="{Binding IsDifferenceTab}"/>
+                <RadioButton Style="{StaticResource TabRadio}" GroupName="DateTab" Content="Cộng / trừ ngày"
+                             IsChecked="{Binding IsAddTab}"/>
+            </StackPanel>
+
+            <!-- ================= KHOẢNG CÁCH ================= -->
+            <StackPanel Visibility="{Binding IsDifferenceTab, Converter={StaticResource BoolToVis}}">
+                <Border Style="{StaticResource Card}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="20"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="TỪ NGÀY" Style="{StaticResource SectionLabel}"/>
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Style="{StaticResource TodayButton}" Command="{Binding FromTodayCommand}"/>
+                                <TextBox Style="{StaticResource InputBox}" Text="{Binding FromText, UpdateSourceTrigger=PropertyChanged}"
+                                         Tag="{Binding FromInvalid}" ToolTip="dd/MM/yyyy"/>
+                            </DockPanel>
+                            <TextBlock Style="{StaticResource DateInfo}" Text="{Binding FromInfo}" Tag="{Binding FromInvalid}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="ĐẾN NGÀY" Style="{StaticResource SectionLabel}"/>
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Style="{StaticResource TodayButton}" Command="{Binding ToTodayCommand}"/>
+                                <TextBox Style="{StaticResource InputBox}" Text="{Binding ToText, UpdateSourceTrigger=PropertyChanged}"
+                                         Tag="{Binding ToInvalid}" ToolTip="dd/MM/yyyy"/>
+                            </DockPanel>
+                            <TextBlock Style="{StaticResource DateInfo}" Text="{Binding ToInfo}" Tag="{Binding ToInvalid}"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <Border Style="{StaticResource Card}" Margin="3,6,3,3">
+                    <StackPanel>
+                        <TextBlock Text="KHOẢNG CÁCH" Style="{StaticResource SectionLabel}"/>
+                        <TextBlock Text="{Binding DifferenceText}" FontFamily="{StaticResource DisplayFont}" FontSize="30"
+                                   FontWeight="SemiBold" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding TotalDaysText}" FontSize="15" Margin="0,4,0,0"
+                                   Foreground="{DynamicResource SubtleTextBrush}"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- ================= CỘNG / TRỪ ================= -->
+            <StackPanel Visibility="{Binding IsAddTab, Converter={StaticResource BoolToVis}}">
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="NGÀY BẮT ĐẦU" Style="{StaticResource SectionLabel}"/>
+                        <DockPanel MaxWidth="360" HorizontalAlignment="Left">
+                            <Button DockPanel.Dock="Right" Style="{StaticResource TodayButton}" Command="{Binding StartTodayCommand}"/>
+                            <TextBox Style="{StaticResource InputBox}" MinWidth="180" Text="{Binding StartText, UpdateSourceTrigger=PropertyChanged}"
+                                     Tag="{Binding StartInvalid}" ToolTip="dd/MM/yyyy"/>
+                        </DockPanel>
+                        <TextBlock Style="{StaticResource DateInfo}" Text="{Binding StartInfo}" Tag="{Binding StartInvalid}"/>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,16,0,8">
+                            <RadioButton Style="{StaticResource TabRadio}" GroupName="AddSub" Content="Cộng" IsChecked="{Binding IsAdd}"/>
+                            <RadioButton Style="{StaticResource TabRadio}" GroupName="AddSub" Content="Trừ" IsChecked="{Binding IsSubtract}"/>
+                        </StackPanel>
+
+                        <UniformGrid Columns="4">
+                            <StackPanel Margin="0,0,8,0">
+                                <TextBlock Text="NĂM" Style="{StaticResource SectionLabel}"/>
+                                <TextBox Style="{StaticResource InputBox}" Text="{Binding YearsText, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+                            <StackPanel Margin="0,0,8,0">
+                                <TextBlock Text="THÁNG" Style="{StaticResource SectionLabel}"/>
+                                <TextBox Style="{StaticResource InputBox}" Text="{Binding MonthsText, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+                            <StackPanel Margin="0,0,8,0">
+                                <TextBlock Text="TUẦN" Style="{StaticResource SectionLabel}"/>
+                                <TextBox Style="{StaticResource InputBox}" Text="{Binding WeeksText, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="NGÀY" Style="{StaticResource SectionLabel}"/>
+                                <TextBox Style="{StaticResource InputBox}" Text="{Binding DaysText, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+                        </UniformGrid>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource Card}" Margin="3,6,3,3">
+                    <StackPanel>
+                        <TextBlock Text="KẾT QUẢ" Style="{StaticResource SectionLabel}"/>
+                        <TextBlock Text="{Binding AddResultText}" FontFamily="{StaticResource DisplayFont}" FontSize="30"
+                                   FontWeight="SemiBold" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding AddErrorText}" Foreground="{DynamicResource ErrorBrush}" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

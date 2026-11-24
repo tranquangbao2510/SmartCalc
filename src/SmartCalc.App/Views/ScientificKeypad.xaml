@@ -1,0 +1,67 @@
+<UserControl x:Class="SmartCalc.App.Views.ScientificKeypad"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Bàn phím Khoa học 5 x 8. Nút 2nd đổi sin/cos/tan/ln/log sang hàm ngược (nhãn + text chèn lấy từ VM). -->
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+            <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+        </Grid.RowDefinitions>
+
+        <!-- Hàng 0 -->
+        <Button Grid.Row="0" Grid.Column="0" Style="{StaticResource ToggleKey}" Content="2nd" Tag="{Binding IsSecond}"
+                Command="{Binding ToggleSecondCommand}" ToolTip="Hàm ngược: sin⁻¹, cos⁻¹, tan⁻¹, eˣ, 10ˣ"/>
+        <Button Grid.Row="0" Grid.Column="1" Style="{StaticResource FuncKey}" Content="π" Command="{Binding InputCommand}" CommandParameter="π"/>
+        <Button Grid.Row="0" Grid.Column="2" Style="{StaticResource FuncKey}" Content="e" Command="{Binding InputCommand}" CommandParameter="e"/>
+        <Button Grid.Row="0" Grid.Column="3" Style="{StaticResource FuncKey}" Content="Ans" Command="{Binding InputCommand}" CommandParameter="Ans"/>
+        <Button Grid.Row="0" Grid.Column="4" Style="{StaticResource OpKey}" Content="C" Command="{Binding ClearCommand}" ToolTip="Xoá (Esc)"/>
+
+        <!-- Hàng 1 -->
+        <Button Grid.Row="1" Grid.Column="0" Style="{StaticResource FuncKey}" Content="x²" Command="{Binding InputCommand}" CommandParameter="^2"/>
+        <Button Grid.Row="1" Grid.Column="1" Style="{StaticResource FuncKey}" Content="1/x" Command="{Binding InputCommand}" CommandParameter="^(−1)"/>
+        <Button Grid.Row="1" Grid.Column="2" Style="{StaticResource FuncKey}" Content="|x|" Command="{Binding InputCommand}" CommandParameter="abs("/>
+        <Button Grid.Row="1" Grid.Column="3" Style="{StaticResource FuncKey}" Content="%" Command="{Binding InputCommand}" CommandParameter="%" ToolTip="Chia lấy dư"/>
+        <Button Grid.Row="1" Grid.Column="4" Style="{StaticResource OpKey}" Command="{Binding BackspaceCommand}" ToolTip="Xoá lùi (Backspace)">
+            <TextBlock Text="&#xE750;" FontFamily="{StaticResource IconFont}"/>
+        </Button>
+
+        <!-- Hàng 2 -->
+        <Button Grid.Row="2" Grid.Column="0" Style="{StaticResource FuncKey}" Content="√x" Command="{Binding InputCommand}" CommandParameter="√("/>
+        <Button Grid.Row="2" Grid.Column="1" Style="{StaticResource FuncKey}" Content="xʸ" Command="{Binding InputCommand}" CommandParameter="^"/>
+        <Button Grid.Row="2" Grid.Column="2" Style="{StaticResource FuncKey}" Content="n!" Command="{Binding InputCommand}" CommandParameter="!"/>
+        <Button Grid.Row="2" Grid.Column="3" Style="{StaticResource OpKey}" Content="(" Command="{Binding InputCommand}" CommandParameter="("/>
+        <Button Grid.Row="2" Grid.Column="4" Style="{StaticResource OpKey}" Content=")" Command="{Binding InputCommand}" CommandParameter=")"/>
+
+        <!-- Hàng 3..6: cột 0 là hàm, cột 1..4 là số + toán tử -->
+        <Button Grid.Row="3" Grid.Column="0" Style="{StaticResource FuncKey}" Content="{Binding SinLabel}" Command="{Binding InputCommand}" CommandParameter="{Binding SinInsert}"/>
+        <Button Grid.Row="3" Grid.Column="1" Style="{StaticResource DigitKey}" Content="7" Command="{Binding InputCommand}" CommandParameter="7"/>
+        <Button Grid.Row="3" Grid.Column="2" Style="{StaticResource DigitKey}" Content="8" Command="{Binding InputCommand}" CommandParameter="8"/>
+        <Button Grid.Row="3" Grid.Column="3" Style="{StaticResource DigitKey}" Content="9" Command="{Binding InputCommand}" CommandParameter="9"/>
+        <Button Grid.Row="3" Grid.Column="4" Style="{StaticResource OpKey}" Content="÷" Command="{Binding InputCommand}" CommandParameter="÷"/>
+
+        <Button Grid.Row="4" Grid.Column="0" Style="{StaticResource FuncKey}" Content="{Binding CosLabel}" Command="{Binding InputCommand}" CommandParameter="{Binding CosInsert}"/>
+        <Button Grid.Row="4" Grid.Column="1" Style="{StaticResource DigitKey}" Content="4" Command="{Binding InputCommand}" CommandParameter="4"/>
+        <Button Grid.Row="4" Grid.Column="2" Style="{StaticResource DigitKey}" Content="5" Command="{Binding InputCommand}" CommandParameter="5"/>
+        <Button Grid.Row="4" Grid.Column="3" Style="{StaticResource DigitKey}" Content="6" Command="{Binding InputCommand}" CommandParameter="6"/>
+        <Button Grid.Row="4" Grid.Column="4" Style="{StaticResource OpKey}" Content="×" Command="{Binding InputCommand}" CommandParameter="×"/>
+
+        <Button Grid.Row="5" Grid.Column="0" Style="{StaticResource FuncKey}" Content="{Binding TanLabel}" Command="{Binding InputCommand}" CommandParameter="{Binding TanInsert}"/>
+        <Button Grid.Row="5" Grid.Column="1" Style="{StaticResource DigitKey}" Content="1" Command="{Binding InputCommand}" CommandParameter="1"/>
+        <Button Grid.Row="5" Grid.Column="2" Style="{StaticResource DigitKey}" Content="2" Command="{Binding InputCommand}" CommandParameter="2"/>
+        <Button Grid.Row="5" Grid.Column="3" Style="{StaticResource DigitKey}" Content="3" Command="{Binding InputCommand}" CommandParameter="3"/>
+        <Button Grid.Row="5" Grid.Column="4" Style="{StaticResource OpKey}" Content="−" Command="{Binding InputCommand}" CommandParameter="−"/>
+
+        <Button Grid.Row="6" Grid.Column="0" Style="{StaticResource FuncKey}" Content="{Binding LnLabel}" Command="{Binding InputCommand}" CommandParameter="{Binding LnInsert}"/>
+        <Button Grid.Row="6" Grid.Column="1" Style="{StaticResource OpKey}" Content="±" Command="{Binding NegateCommand}" ToolTip="Đổi dấu"/>
+        <Button Grid.Row="6" Grid.Column="2" Style="{StaticResource DigitKey}" Content="0" Command="{Binding InputCommand}" CommandParameter="0"/>
+        <Button Grid.Row="6" Grid.Column="3" Style="{StaticResource DigitKey}" Content="." Command="{Binding InputCommand}" CommandParameter="."/>
+        <Button Grid.Row="6" Grid.Column="4" Style="{StaticResource OpKey}" Content="+" Command="{Binding InputCommand}" CommandParameter="+"/>
+
+        <!-- Hàng 7 -->
+        <Button Grid.Row="7" Grid.Column="0" Style="{StaticResource FuncKey}" Content="{Binding LogLabel}" Command="{Binding InputCommand}" CommandParameter="{Binding LogInsert}"/>
+        <Button Grid.Row="7" Grid.Column="1" Grid.ColumnSpan="4" Style="{StaticResource AccentKey}" Content="=" Command="{Binding EvaluateCommand}" ToolTip="Tính (Enter)"/>
+    </Grid>
+</UserControl>

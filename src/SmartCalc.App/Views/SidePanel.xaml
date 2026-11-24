@@ -1,0 +1,81 @@
+<UserControl x:Class="SmartCalc.App.Views.SidePanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:core="clr-namespace:SmartCalc.Core.History;assembly=SmartCalc.Core"
+             xmlns:vm="clr-namespace:SmartCalc.App.ViewModels"
+             x:Name="Root">
+    <DockPanel Margin="8,10,8,8">
+        <!-- Tiêu đề tab -->
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="8,0,0,6">
+            <RadioButton Style="{StaticResource TabRadio}" Content="Lịch sử" GroupName="SideTab" IsChecked="{Binding IsHistoryTab}"/>
+            <RadioButton Style="{StaticResource TabRadio}" Content="Bộ nhớ" GroupName="SideTab" IsChecked="{Binding IsMemoryTab}"/>
+        </StackPanel>
+
+        <Grid>
+        <!-- ===================== LỊCH SỬ ===================== -->
+        <DockPanel Visibility="{Binding IsHistoryTab, Converter={StaticResource BoolToVis}}">
+            <Button DockPanel.Dock="Bottom" Style="{StaticResource IconButton}" HorizontalAlignment="Right"
+                    Content="&#xE74D;" ToolTip="Xoá toàn bộ lịch sử" Command="{Binding ClearHistoryCommand}"
+                    Visibility="{Binding HasHistory, Converter={StaticResource BoolToVis}}"/>
+            <Grid>
+                <TextBlock Text="Chưa có lịch sử" Margin="12" Foreground="{DynamicResource SubtleTextBrush}"
+                           Visibility="{Binding HasHistory, Converter={StaticResource InverseBoolToVis}}"/>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding History}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="core:HistoryEntry">
+                                <Button Style="{StaticResource ListItemButton}" ToolTip="Bấm để nạp lại biểu thức"
+                                        Command="{Binding DataContext.LoadHistoryCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                        CommandParameter="{Binding}">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Expression, StringFormat='{}{0} ='}" HorizontalAlignment="Right"
+                                                   TextWrapping="Wrap" TextAlignment="Right" FontSize="13"
+                                                   Foreground="{DynamicResource SubtleTextBrush}"/>
+                                        <TextBlock Text="{Binding Result}" HorizontalAlignment="Right" FontSize="22" FontWeight="SemiBold"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+        </DockPanel>
+
+        <!-- ===================== BỘ NHỚ ===================== -->
+        <DockPanel Visibility="{Binding IsMemoryTab, Converter={StaticResource BoolToVis}}">
+            <Button DockPanel.Dock="Bottom" Style="{StaticResource IconButton}" HorizontalAlignment="Right"
+                    Content="&#xE74D;" ToolTip="Xoá toàn bộ bộ nhớ (MC)" Command="{Binding MemoryClearCommand}"
+                    Visibility="{Binding HasMemory, Converter={StaticResource BoolToVis}}"/>
+            <Grid>
+                <TextBlock Text="Chưa có gì trong bộ nhớ" Margin="12" Foreground="{DynamicResource SubtleTextBrush}"
+                           Visibility="{Binding HasMemory, Converter={StaticResource InverseBoolToVis}}"/>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding MemoryItems}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:MemoryItemViewModel">
+                                <Button Style="{StaticResource ListItemButton}" ToolTip="Bấm để chèn giá trị (MR)"
+                                        Command="{Binding DataContext.RecallMemoryItemCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                        CommandParameter="{Binding}">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Text}" HorizontalAlignment="Right" FontSize="22" FontWeight="SemiBold"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,4,0,0">
+                                            <Button Style="{StaticResource MemKey}" Content="MC" Height="26" ToolTip="Xoá ô nhớ này"
+                                                    Command="{Binding DataContext.ClearMemoryItemCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}"/>
+                                            <Button Style="{StaticResource MemKey}" Content="M+" Height="26" ToolTip="Cộng giá trị hiện tại vào ô này"
+                                                    Command="{Binding DataContext.AddToMemoryItemCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}"/>
+                                            <Button Style="{StaticResource MemKey}" Content="M−" Height="26" ToolTip="Trừ giá trị hiện tại khỏi ô này"
+                                                    Command="{Binding DataContext.SubtractFromMemoryItemCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+        </DockPanel>
+        </Grid>
+    </DockPanel>
+</UserControl>

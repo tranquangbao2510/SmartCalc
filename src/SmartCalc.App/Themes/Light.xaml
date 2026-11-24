@@ -1,0 +1,22 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Bảng màu SÁNG. Dark.xaml có đúng các khoá này; App.ApplyTheme() thay cả từ điển khi đổi theme. -->
+    <SolidColorBrush x:Key="WindowBg" Color="#F3F4F7"/>
+    <SolidColorBrush x:Key="SidebarBg" Color="#EAECF1"/>
+    <SolidColorBrush x:Key="PanelBg" Color="#EEF0F4"/>
+    <SolidColorBrush x:Key="DisplayBg" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="KeyDigitBg" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="KeyOpBg" Color="#F6F7FA"/>
+    <SolidColorBrush x:Key="KeyBorder" Color="#E3E6EC"/>
+    <SolidColorBrush x:Key="HoverOverlay" Color="#0D000000"/>
+    <SolidColorBrush x:Key="PressedOverlay" Color="#1F000000"/>
+    <SolidColorBrush x:Key="SelectedBg" Color="#DCE3F0"/>
+    <SolidColorBrush x:Key="AccentBrush" Color="#2563EB"/>
+    <SolidColorBrush x:Key="AccentSoftBg" Color="#E0E9FD"/>
+    <SolidColorBrush x:Key="OnAccentBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="TextBrush" Color="#111827"/>
+    <SolidColorBrush x:Key="SubtleTextBrush" Color="#6B7280"/>
+    <SolidColorBrush x:Key="ErrorBrush" Color="#DC2626"/>
+    <SolidColorBrush x:Key="ErrorSoftBg" Color="#FDE2E2"/>
+    <SolidColorBrush x:Key="DividerBrush" Color="#E2E5EB"/>
+</ResourceDictionary>

@@ -1,0 +1,117 @@
+<UserControl x:Class="SmartCalc.App.Views.ProgrammerView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:SmartCalc.App.Views"
+             xmlns:vm="clr-namespace:SmartCalc.App.ViewModels">
+    <!-- Chế độ Lập trình (DataContext = ProgrammerViewModel). Toán tử kiểu C: AND = &, OR = |, XOR = ^, NOT = ~. -->
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="2*" MinHeight="100"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="5*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Màn hình -->
+        <Border Grid.Row="0" CornerRadius="12" Background="{DynamicResource DisplayBg}" Padding="18,10" Margin="3,0,3,6">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Button Style="{StaticResource PillButton}" HorizontalAlignment="Left" MinWidth="70"
+                        Content="{Binding WordSizeLabel}" Command="{Binding CycleWordSizeCommand}"
+                        ToolTip="Kích thước word: QWORD 64 bit → DWORD 32 → WORD 16 → BYTE 8"/>
+                <views:ExpressionDisplay Grid.Row="1" ResultHeight="56"/>
+            </Grid>
+        </Border>
+
+        <!-- HEX / DEC / OCT / BIN song song; bấm để đổi cơ số nhập -->
+        <ItemsControl Grid.Row="1" ItemsSource="{Binding RadixRows}" Margin="0,0,0,6">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="vm:RadixRowViewModel">
+                    <Button Style="{StaticResource RadixRowButton}" Tag="{Binding IsSelected}" ToolTip="Nhập theo hệ này"
+                            Command="{Binding DataContext.SelectRadixCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                            CommandParameter="{Binding}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="48"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{Binding Label}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{DynamicResource SubtleTextBrush}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <TextBlock Grid.Column="1" Text="{Binding Text}" FontFamily="Cascadia Mono, Consolas" FontSize="14"
+                                       TextWrapping="Wrap" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Button>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- Bàn phím 5 x 7 -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+            </Grid.RowDefinitions>
+
+            <!-- Hàng 0: phép bit -->
+            <Button Grid.Row="0" Grid.Column="0" Style="{StaticResource FuncKey}" Content="AND" Command="{Binding InputCommand}" CommandParameter="&amp;" ToolTip="AND bit (&amp;)"/>
+            <Button Grid.Row="0" Grid.Column="1" Style="{StaticResource FuncKey}" Content="OR" Command="{Binding InputCommand}" CommandParameter="|" ToolTip="OR bit (|)"/>
+            <Button Grid.Row="0" Grid.Column="2" Style="{StaticResource FuncKey}" Content="XOR" Command="{Binding InputCommand}" CommandParameter="^" ToolTip="XOR bit (^)"/>
+            <Button Grid.Row="0" Grid.Column="3" Style="{StaticResource FuncKey}" Content="NOT" Command="{Binding InputCommand}" CommandParameter="~" ToolTip="Đảo bit (~)"/>
+            <Button Grid.Row="0" Grid.Column="4" Style="{StaticResource OpKey}" Content="AC" Command="{Binding ClearCommand}" ToolTip="Xoá hết (Esc)"/>
+
+            <!-- Hàng 1 -->
+            <Button Grid.Row="1" Grid.Column="0" Style="{StaticResource FuncKey}" Content="&lt;&lt;" Command="{Binding InputCommand}" CommandParameter="&lt;&lt;" ToolTip="Dịch trái"/>
+            <Button Grid.Row="1" Grid.Column="1" Style="{StaticResource FuncKey}" Content="&gt;&gt;" Command="{Binding InputCommand}" CommandParameter="&gt;&gt;" ToolTip="Dịch phải (số học)"/>
+            <Button Grid.Row="1" Grid.Column="2" Style="{StaticResource OpKey}" Content="(" Command="{Binding InputCommand}" CommandParameter="("/>
+            <Button Grid.Row="1" Grid.Column="3" Style="{StaticResource OpKey}" Content=")" Command="{Binding InputCommand}" CommandParameter=")"/>
+            <Button Grid.Row="1" Grid.Column="4" Style="{StaticResource OpKey}" Command="{Binding BackspaceCommand}" ToolTip="Xoá lùi (Backspace)">
+                <TextBlock Text="&#xE750;" FontFamily="{StaticResource IconFont}"/>
+            </Button>
+
+            <!-- Hàng 2 -->
+            <Button Grid.Row="2" Grid.Column="0" Style="{StaticResource DigitKey}" Content="A" Command="{Binding InputCommand}" CommandParameter="A" IsEnabled="{Binding CanHexDigit}"/>
+            <Button Grid.Row="2" Grid.Column="1" Style="{StaticResource DigitKey}" Content="B" Command="{Binding InputCommand}" CommandParameter="B" IsEnabled="{Binding CanHexDigit}"/>
+            <Button Grid.Row="2" Grid.Column="2" Style="{StaticResource OpKey}" Content="%" Command="{Binding InputCommand}" CommandParameter="%" ToolTip="Chia lấy dư"/>
+            <Button Grid.Row="2" Grid.Column="3" Style="{StaticResource OpKey}" Content="±" Command="{Binding NegateCommand}" ToolTip="Đổi dấu"/>
+            <Button Grid.Row="2" Grid.Column="4" Style="{StaticResource OpKey}" Content="÷" Command="{Binding InputCommand}" CommandParameter="÷" ToolTip="Chia nguyên"/>
+
+            <!-- Hàng 3..5 -->
+            <Button Grid.Row="3" Grid.Column="0" Style="{StaticResource DigitKey}" Content="C" Command="{Binding InputCommand}" CommandParameter="C" IsEnabled="{Binding CanHexDigit}"/>
+            <Button Grid.Row="3" Grid.Column="1" Style="{StaticResource DigitKey}" Content="7" Command="{Binding InputCommand}" CommandParameter="7" IsEnabled="{Binding CanDigit2To7}"/>
+            <Button Grid.Row="3" Grid.Column="2" Style="{StaticResource DigitKey}" Content="8" Command="{Binding InputCommand}" CommandParameter="8" IsEnabled="{Binding CanDigit8To9}"/>
+            <Button Grid.Row="3" Grid.Column="3" Style="{StaticResource DigitKey}" Content="9" Command="{Binding InputCommand}" CommandParameter="9" IsEnabled="{Binding CanDigit8To9}"/>
+            <Button Grid.Row="3" Grid.Column="4" Style="{StaticResource OpKey}" Content="×" Command="{Binding InputCommand}" CommandParameter="×"/>
+
+            <Button Grid.Row="4" Grid.Column="0" Style="{StaticResource DigitKey}" Content="D" Command="{Binding InputCommand}" CommandParameter="D" IsEnabled="{Binding CanHexDigit}"/>
+            <Button Grid.Row="4" Grid.Column="1" Style="{StaticResource DigitKey}" Content="4" Command="{Binding InputCommand}" CommandParameter="4" IsEnabled="{Binding CanDigit2To7}"/>
+            <Button Grid.Row="4" Grid.Column="2" Style="{StaticResource DigitKey}" Content="5" Command="{Binding InputCommand}" CommandParameter="5" IsEnabled="{Binding CanDigit2To7}"/>
+            <Button Grid.Row="4" Grid.Column="3" Style="{StaticResource DigitKey}" Content="6" Command="{Binding InputCommand}" CommandParameter="6" IsEnabled="{Binding CanDigit2To7}"/>
+            <Button Grid.Row="4" Grid.Column="4" Style="{StaticResource OpKey}" Content="−" Command="{Binding InputCommand}" CommandParameter="−"/>
+
+            <Button Grid.Row="5" Grid.Column="0" Style="{StaticResource DigitKey}" Content="E" Command="{Binding InputCommand}" CommandParameter="E" IsEnabled="{Binding CanHexDigit}"/>
+            <Button Grid.Row="5" Grid.Column="1" Style="{StaticResource DigitKey}" Content="1" Command="{Binding InputCommand}" CommandParameter="1"/>
+            <Button Grid.Row="5" Grid.Column="2" Style="{StaticResource DigitKey}" Content="2" Command="{Binding InputCommand}" CommandParameter="2" IsEnabled="{Binding CanDigit2To7}"/>
+            <Button Grid.Row="5" Grid.Column="3" Style="{StaticResource DigitKey}" Content="3" Command="{Binding InputCommand}" CommandParameter="3" IsEnabled="{Binding CanDigit2To7}"/>
+            <Button Grid.Row="5" Grid.Column="4" Style="{StaticResource OpKey}" Content="+" Command="{Binding InputCommand}" CommandParameter="+"/>
+
+            <!-- Hàng 6 -->
+            <Button Grid.Row="6" Grid.Column="0" Style="{StaticResource DigitKey}" Content="F" Command="{Binding InputCommand}" CommandParameter="F" IsEnabled="{Binding CanHexDigit}"/>
+            <Button Grid.Row="6" Grid.Column="1" Grid.ColumnSpan="2" Style="{StaticResource DigitKey}" Content="0" Command="{Binding InputCommand}" CommandParameter="0"/>
+            <Button Grid.Row="6" Grid.Column="3" Grid.ColumnSpan="2" Style="{StaticResource AccentKey}" Content="=" Command="{Binding EvaluateCommand}" ToolTip="Tính (Enter)"/>
+        </Grid>
+    </Grid>
+</UserControl>
