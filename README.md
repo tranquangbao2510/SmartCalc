@@ -19,6 +19,7 @@ Máy tính cá nhân trên desktop (WPF, .NET 10), bài tập môn **Kiểm ch�
 
 Tính năng chung:
 - **Màn hình 2 dòng:** dòng trên là biểu thức, dòng dưới là kết quả (khi đang gõ thì hiện kết quả xem trước). Khi có lỗi, dòng dưới hiện thông báo tiếng Việt và ký tự ở vị trí lỗi được **tô đỏ**.
+- **Trình bày biểu thức:** Cơ bản/Khoa học hiển thị lũy thừa bằng chỉ số trên thật (hỗ trợ lồng nhau, ô nhạt khi đang nhập mũ) và `abs(...)` bằng dấu `|...|`, cả trên màn hình và trong lịch sử. Vị trí tô lỗi ánh xạ về chuỗi gốc. Chế độ Lập trình giữ text thô vì `^` là XOR. Biểu thức bên trong, JSON và Ctrl+C/Ctrl+V vẫn dùng text như `2^3`, `abs(-5)`; các ô nhập đồ thị/đổi đơn vị/thống kê giữ nguyên.
 - **Bàn phím thật:** số, toán tử, Enter (=), Esc (C), Backspace, Ctrl+C / Ctrl+V.
 - **Lịch sử** (lưu JSON) và **bộ nhớ** MC MR M+ M− MS ở panel phải.
 - **Giao diện:** theme sáng/tối, nút ghim cửa sổ luôn trên cùng. Cửa sổ co giãn được: sidebar tự thu gọn và panel phải hiện đè lên khi cửa sổ hẹp.
@@ -30,7 +31,7 @@ Yêu cầu: **Windows 10/11** và **.NET SDK 10**.
 
 ```bash
 dotnet build SmartCalc.sln                  # build (0 warning, warning bị coi là lỗi)
-dotnet test SmartCalc.sln                   # chạy 6268 test
+dotnet test SmartCalc.sln                   # chạy 6356 test
 dotnet run --project src/SmartCalc.App      # mở ứng dụng
 ```
 
@@ -136,7 +137,7 @@ src/SmartCalc.Core/
   Lexing/        DFA (LexerDfa: bảng δ), Lexer (khớp dài nhất), Token, NumberReader
   Parsing/       Parser, ProgrammerParser, AST, ParserLimits, Builtins
   Evaluation/    Evaluator (decimal/double), Calculator, NumberFormatter
-  Input/         InputStateMachine, IExpressionEngine, ExpressionEditor, DisplayModel
+  Input/         InputStateMachine, IExpressionEngine, ExpressionEditor, DisplayModel, ExpressionLayout
   Programmer/    IntegerEvaluator (WordSize), ProgrammerFormatter, ProgrammerSession
   Graphing/      PlotFunction, FunctionSampler, Viewport, GridLines
   Statistics/    StatisticsCalculator
@@ -148,7 +149,7 @@ src/SmartCalc.App/
   ViewModels/    KeypadViewModel (dùng chung), MainViewModel và VM từng chế độ
   Controls/      GraphCanvas (vẽ bằng OnRender)
   Themes/        Light.xaml, Dark.xaml (bảng màu), Styles.xaml
-tests/SmartCalc.Core.Tests/    6268 test, xem docs/test-report.md
+tests/SmartCalc.Core.Tests/    6356 test, xem docs/test-report.md
 ```
 
 ## Tài liệu

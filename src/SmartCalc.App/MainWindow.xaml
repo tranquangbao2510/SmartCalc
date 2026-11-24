@@ -45,7 +45,7 @@
 
                 <TextBlock DockPanel.Dock="Bottom" Margin="18,8,8,14" FontSize="11" TextWrapping="Wrap"
                            Foreground="{DynamicResource SubtleTextBrush}"
-                           Text="Alt+1…7 để đổi chế độ"
+                           Text="Alt+1…6 để đổi chế độ"
                            Visibility="{Binding IsSidebarExpanded, Converter={StaticResource BoolToVis}}"/>
 
                 <ListBox ItemsSource="{Binding Modes}" SelectedItem="{Binding SelectedMode}"

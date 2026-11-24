@@ -21,7 +21,7 @@
                 <Button Style="{StaticResource PillButton}" HorizontalAlignment="Left" MinWidth="70"
                         Content="{Binding WordSizeLabel}" Command="{Binding CycleWordSizeCommand}"
                         ToolTip="Kích thước word: QWORD 64 bit → DWORD 32 → WORD 16 → BYTE 8"/>
-                <views:ExpressionDisplay Grid.Row="1" ResultHeight="56"/>
+                <views:ExpressionDisplay Grid.Row="1" ResultHeight="56" MathNotation="False"/>
             </Grid>
         </Border>
 

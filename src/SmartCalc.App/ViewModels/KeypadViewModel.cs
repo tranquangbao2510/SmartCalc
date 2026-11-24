@@ -26,6 +26,11 @@ public abstract partial class KeypadViewModel : ObservableObject
     [ObservableProperty] public partial bool IsError { get; private set; }
     [ObservableProperty] public partial bool IsPreview { get; private set; }
 
+    // Nguồn riêng cho trình bày Inline; CopyText và dữ liệu máy vẫn dùng text gốc.
+    public string ExpressionSource => Machine.Expression;
+    public int ExpressionErrorPosition => Machine.State == InputState.Error ? Machine.ErrorPosition : -1;
+    public bool ShowExpressionEquals => Machine.State == InputState.ShowingResult;
+
     /// <summary>Text để Ctrl+C: kết quả nếu có, ngược lại biểu thức.</summary>
     public string CopyText => State switch
     {
@@ -44,6 +49,9 @@ public abstract partial class KeypadViewModel : ObservableObject
         BottomText = d.BottomText;
         IsError = d.IsError;
         IsPreview = d.IsPreview;
+        OnPropertyChanged(nameof(ExpressionSource));
+        OnPropertyChanged(nameof(ExpressionErrorPosition));
+        OnPropertyChanged(nameof(ShowExpressionEquals));
         OnDisplaySynced();
     }
 

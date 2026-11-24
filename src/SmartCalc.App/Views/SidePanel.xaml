@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:core="clr-namespace:SmartCalc.Core.History;assembly=SmartCalc.Core"
              xmlns:vm="clr-namespace:SmartCalc.App.ViewModels"
+             xmlns:controls="clr-namespace:SmartCalc.App.Controls"
              x:Name="Root">
     <DockPanel Margin="8,10,8,8">
         <!-- Tiêu đề tab -->
@@ -28,7 +29,9 @@
                                         Command="{Binding DataContext.LoadHistoryCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                         CommandParameter="{Binding}">
                                     <StackPanel>
-                                        <TextBlock Text="{Binding Expression, StringFormat='{}{0} ='}" HorizontalAlignment="Right"
+                                        <controls:ExpressionTextBlock ExpressionSource="{Binding Expression}" ShowEquals="True"
+                                                   MathNotation="{Binding DataContext.IsCalculatorMode, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                   HorizontalAlignment="Right"
                                                    TextWrapping="Wrap" TextAlignment="Right" FontSize="13"
                                                    Foreground="{DynamicResource SubtleTextBrush}"/>
                                         <TextBlock Text="{Binding Result}" HorizontalAlignment="Right" FontSize="22" FontWeight="SemiBold"
