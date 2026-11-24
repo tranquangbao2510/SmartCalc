@@ -6,7 +6,7 @@ Máy tính cá nhân trên desktop (WPF, .NET 10), bài tập môn **Kiểm ch�
 
 ## Tính năng
 
-7 chế độ ở sidebar bên trái, đổi bằng phím tắt **Alt+1 … Alt+7**:
+6 chế độ ở sidebar bên trái, đổi bằng phím tắt **Alt+1 … Alt+6**:
 
 | Chế độ | Nội dung |
 |---|---|
@@ -15,8 +15,7 @@ Máy tính cá nhân trên desktop (WPF, .NET 10), bài tập môn **Kiểm ch�
 | 3. Lập trình | HEX/DEC/OCT/BIN hiển thị song song; `AND OR XOR NOT << >>`; kích thước **QWORD/DWORD/WORD/BYTE** (bù hai, tràn quay vòng) |
 | 4. Vẽ đồ thị | tối đa 3 hàm `y = f(x)` với màu khác nhau; lưới và trục; lăn chuột để zoom quanh con trỏ, kéo để di chuyển, nhấp đúp để đặt lại; nét được **ngắt** tại điểm không xác định và tiệm cận |
 | 5. Đổi đơn vị | độ dài, khối lượng (có lạng/yến/tạ), nhiệt độ, diện tích, thể tích, tốc độ, thời gian, dữ liệu (bit/byte, KB và KiB) |
-| 6. Ngày tháng | khoảng cách giữa 2 ngày (năm/tháng/tuần/ngày + tổng số ngày, tính đúng năm nhuận); cộng/trừ ngày |
-| 7. Thống kê | n, tổng, trung bình, trung vị, mode, min, max, phương sai và độ lệch chuẩn (mẫu & tổng thể) |
+| 6. Thống kê | n, tổng, trung bình, trung vị, mode, min, max, phương sai và độ lệch chuẩn (mẫu & tổng thể) |
 
 Tính năng chung:
 - **Màn hình 2 dòng:** dòng trên là biểu thức, dòng dưới là kết quả (khi đang gõ thì hiện kết quả xem trước). Khi có lỗi, dòng dưới hiện thông báo tiếng Việt và ký tự ở vị trí lỗi được **tô đỏ**.
@@ -31,15 +30,16 @@ Yêu cầu: **Windows 10/11** và **.NET SDK 10**.
 
 ```bash
 dotnet build SmartCalc.sln                  # build (0 warning, warning bị coi là lỗi)
-dotnet test SmartCalc.sln                   # chạy 679 test
+dotnet test SmartCalc.sln                   # chạy 6268 test
 dotnet run --project src/SmartCalc.App      # mở ứng dụng
 ```
 
 Dữ liệu người dùng được lưu trong `%AppData%\SmartCalc\`:
-- `history.json`: lịch sử, tối đa 100 mục;
+- `history.json`: lịch sử Queue, tối đa 100 mục; UI và JSON giữ thứ tự mới nhất trước;
 - `settings.json`: theme, ghim, DEG/RAD, chế độ, kích thước cửa sổ, cơ số và kích thước word.
 
 File hỏng hoặc bị sửa tay sai sẽ được bỏ qua, app dùng giá trị mặc định.
+Cài đặt chế độ Thống kê cũ (`Mode = 7`) được đọc thành `Mode = 6`.
 
 ## Kiến trúc
 
@@ -85,9 +85,10 @@ flowchart LR
     EV -.-> ERR
 ```
 
-- **Lexer** (`Core/Lexing`): DFA M = (Q, Σ, δ, q0, F). Bảng δ là ma trận `DfaState[state, charClass]`, tách token theo quy tắc khớp dài nhất. Ở chế độ lập trình, bảng được dựng khác: số nguyên theo cơ số đang chọn, cùng các toán tử bit. Xem [docs/dfa-lexer.md](docs/dfa-lexer.md).
+- **Lexer** (`Core/Lexing`): DFA M = (Q, Σ, δ, q0, F). Mọi luật số nằm trong bảng δ; trạng thái `BadNumber` sinh Error để token lỗi dài hơn thắng theo quy tắc khớp dài nhất. Giữ nguyên vị trí/thông báo lỗi và nhân ngầm ở chế độ thường. Có cấu hình lập trình cho cơ số 2/8/10/16. Xem [docs/dfa-lexer.md](docs/dfa-lexer.md).
 - **Parser** (`Core/Parsing`): mỗi ký hiệu chưa kết thúc là một hàm `Parse*`. Văn phạm LL(1) đảm bảo thứ tự ưu tiên và tính kết hợp (`^` kết hợp phải, `-2^2 = -4`). Có giới hạn 256 mức lồng nhau để không tràn stack. Chế độ lập trình dùng `ProgrammerParser` với độ ưu tiên kiểu C. Xem [docs/grammar.md](docs/grammar.md).
-- **Evaluator** (`Core/Evaluation`, `Core/Programmer`): duyệt AST. Bản số thực dùng decimal/double và DEG/RAD; bản số nguyên dùng bù hai theo kích thước word. Mọi lỗi được báo bằng `CalcException(thông báo tiếng Việt, vị trí)`.
+- **Evaluator** (`Core/Evaluation`, `Core/Programmer`): duyệt AST; hàm Builtins được tra trong Dictionary tên → Func. Bản số thực dùng decimal/double và DEG/RAD; bản số nguyên dùng bù hai theo kích thước word. Mọi lỗi được báo bằng `CalcException(thông báo tiếng Việt, vị trí)`.
+- **Đọc số dùng chung:** Thống kê và Đổi đơn vị dùng `NumberReader` chạy DFA số của Lexer, sau đó chuyển giá trị decimal. Dấu âm, dấu phân tách và chuẩn hoá dữ liệu giữ nguyên.
 
 ### Giao diện: UI → StateMachine → Core
 
@@ -95,19 +96,19 @@ flowchart LR
 flowchart TD
     subgraph UI["SmartCalc.App — WPF (chỉ hiển thị)"]
         V["View (XAML)<br/>bàn phím, màn hình, sidebar,<br/>GraphCanvas, các chế độ"]
-        VM["ViewModel (MVVM)<br/>MainViewModel, ProgrammerViewModel,<br/>Graph / Converter / Date / StatisticsViewModel"]
+        VM["ViewModel (MVVM)<br/>MainViewModel, ProgrammerViewModel,<br/>Graph / Converter / StatisticsViewModel"]
         V -- "phím bấm / gõ / chuột<br/>(Command, binding)" --> VM
         VM -- "thuộc tính hiển thị<br/>(INotifyPropertyChanged)" --> V
     end
 
     subgraph CORE["SmartCalc.Core — logic, có unit test"]
-        SM["InputStateMachine<br/>bảng (State × InputKind) → (Action, Next)<br/>Empty · Typing · ShowingResult · Error"]
+        SM["InputStateMachine<br/>chuẩn hoá InputSymbol<br/>δ: State × Symbol → State<br/>λ: State × Symbol → Action<br/>Empty · Typing · ShowingResult · Error"]
         DM["DisplayModel<br/>(nội dung màn hình 2 dòng)"]
         ENG{{"IExpressionEngine"}}
         SCI["ScientificEngine<br/>Ans, DEG/RAD"]
         PRG["ProgrammerEngine<br/>cơ số, kích thước word"]
         PIPE["Lexer → Parser → AST → Evaluator"]
-        OTHER["HistoryStore · MemoryStore · AppSettings<br/>UnitConverter · DateCalculator<br/>PlotFunction · FunctionSampler · Viewport<br/>StatisticsCalculator"]
+        OTHER["HistoryStore · MemoryStore · AppSettings<br/>UnitConverter<br/>PlotFunction · FunctionSampler · Viewport<br/>StatisticsCalculator"]
 
         SM --> ENG
         ENG --> SCI --> PIPE
@@ -121,9 +122,9 @@ flowchart TD
     PLOT["GraphCanvas.OnRender"] -. "lấy mẫu f(x)" .-> OTHER
 ```
 
-- **Không có if-else rải rác ở UI:** ViewModel chỉ đổi mỗi phím thành một `InputEvent` (Operand, Operator, Equals, Clear, Backspace, Negate, Load) rồi gọi `InputStateMachine.Process`. Hành vi nằm trong **bảng chuyển trạng thái** 4 × 7 = 28 ô (máy Mealy). Có test bảo đảm bảng đủ ô. Xem [docs/state-machine.md](docs/state-machine.md).
+- **Máy nhập liệu toàn phần:** ViewModel gửi `InputEvent`; engine/kết quả sửa chuỗi được chuẩn hoá thành 10 `InputSymbol` trước khi tra bảng. Bảng chuyển trạng thái và bảng hành động riêng có đủ **40 ô mỗi bảng**, kể cả hàng Error; Process không gọi đệ quy. Có test giá trị từng ô và các kịch bản phím cũ. Xem [docs/state-machine.md](docs/state-machine.md).
 - **Một bảng, nhiều chế độ:** phần tính toán được tách thành `IExpressionEngine`. Vì vậy Cơ bản/Khoa học (`ScientificEngine`) và Lập trình (`ProgrammerEngine`) dùng **cùng** máy trạng thái.
-- **Các chế độ khác** (đổi đơn vị, ngày tháng, đồ thị, thống kê) gọi thẳng các lớp tương ứng trong Core. Riêng `GraphCanvas` chỉ chuyển sự kiện chuột thành phép biến đổi `Viewport` và vẽ các đoạn do `FunctionSampler` trả về.
+- **Các chế độ khác** (đổi đơn vị, đồ thị, thống kê) gọi thẳng các lớp tương ứng trong Core. Riêng `GraphCanvas` chỉ chuyển sự kiện chuột thành phép biến đổi `Viewport` và vẽ các đoạn do `FunctionSampler` trả về.
 
 ### Cấu trúc thư mục
 
@@ -132,22 +133,22 @@ SmartCalc.sln
 Directory.Build.props          Nullable + TreatWarningsAsErrors cho mọi project
 docs/                          SPEC, DFA lexer, văn phạm, máy trạng thái, báo cáo test
 src/SmartCalc.Core/
-  Lexing/        DFA (LexerDfa: bảng δ), Lexer (khớp dài nhất), Token
+  Lexing/        DFA (LexerDfa: bảng δ), Lexer (khớp dài nhất), Token, NumberReader
   Parsing/       Parser, ProgrammerParser, AST, ParserLimits, Builtins
   Evaluation/    Evaluator (decimal/double), Calculator, NumberFormatter
   Input/         InputStateMachine, IExpressionEngine, ExpressionEditor, DisplayModel
   Programmer/    IntegerEvaluator (WordSize), ProgrammerFormatter, ProgrammerSession
   Graphing/      PlotFunction, FunctionSampler, Viewport, GridLines
   Statistics/    StatisticsCalculator
-  Units/         UnitConverter       Dates/     DateCalculator
+  Units/         UnitConverter
   History/ Memory/ Settings/ Persistence/ Formatting/ Errors/
 src/SmartCalc.App/
   Views/         BasicKeypad, ScientificKeypad, ProgrammerView, GraphView, ConverterView,
-                 DateView, StatisticsView, ExpressionDisplay, SidePanel
+                 StatisticsView, ExpressionDisplay, SidePanel
   ViewModels/    KeypadViewModel (dùng chung), MainViewModel và VM từng chế độ
   Controls/      GraphCanvas (vẽ bằng OnRender)
   Themes/        Light.xaml, Dark.xaml (bảng màu), Styles.xaml
-tests/SmartCalc.Core.Tests/    679 test, xem docs/test-report.md
+tests/SmartCalc.Core.Tests/    6268 test, xem docs/test-report.md
 ```
 
 ## Tài liệu
@@ -157,7 +158,7 @@ tests/SmartCalc.Core.Tests/    679 test, xem docs/test-report.md
 | [docs/SPEC.md](docs/SPEC.md) | Đặc tả dự án |
 | [docs/dfa-lexer.md](docs/dfa-lexer.md) | DFA của lexer: lớp ký tự, bảng chuyển trạng thái, sơ đồ nhận dạng số |
 | [docs/grammar.md](docs/grammar.md) | Văn phạm, lý do văn phạm cho đúng thứ tự ưu tiên, ví dụ cây AST, văn phạm chế độ lập trình |
-| [docs/state-machine.md](docs/state-machine.md) | Máy trạng thái nhập liệu: bảng 28 ô, sơ đồ, ví dụ chạy |
+| [docs/state-machine.md](docs/state-machine.md) | Máy nhập liệu: bảng chuyển và bảng hành động 40 ô, sơ đồ, ví dụ |
 | [docs/test-report.md](docs/test-report.md) | Số lượng test, các nhóm test, lỗi đã sửa |
 
 ## Giới hạn đã biết

@@ -3,6 +3,7 @@ namespace SmartCalc.Core.Lexing;
 /// <summary>Các loại token mà lexer nhận dạng được.</summary>
 public enum TokenKind
 {
+    Error,       // số sai được nhận dạng ngay trong bảng δ
     Number,      // 12, 3.14, .5, 1.5e-3; chế độ lập trình: 0xFF, 0b101, 0o17
     Identifier,  // sin, cos, pi, e, Ans, x ... (parser sẽ kiểm tra tên hợp lệ)
     Plus,        // +

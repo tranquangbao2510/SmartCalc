@@ -33,6 +33,7 @@ public sealed class Lexer
             int i = pos;
             int lastAcceptEnd = -1;              // vị trí ngay sau lexeme dài nhất được chấp nhận
             var lastAcceptState = DfaState.Dead;
+            int numberEnd = -1; // chỉ ghi nhớ vị trí báo lỗi; cú pháp số hoàn toàn do δ quyết định
 
             // Chạy DFA cho tới khi không còn cạnh đi tiếp
             while (i < input.Length)
@@ -45,6 +46,8 @@ public sealed class Lexer
                 {
                     lastAcceptEnd = i;
                     lastAcceptState = state;
+                    if (!_dfa.IsSkip(state) && _dfa.TokenKindOf(state) == TokenKind.Number)
+                        numberEnd = i;
                 }
             }
 
@@ -54,8 +57,9 @@ public sealed class Lexer
             if (!_dfa.IsSkip(lastAcceptState))
             {
                 var kind = _dfa.TokenKindOf(lastAcceptState);
+                if (kind == TokenKind.Error)
+                    throw new CalcException($"Số không hợp lệ: ký tự '{input[numberEnd]}' tại vị trí {numberEnd}", numberEnd);
                 tokens.Add(new Token(kind, input[pos..lastAcceptEnd], pos));
-                if (kind == TokenKind.Number) CheckNumberEnd(input, lastAcceptEnd, lastAcceptState);
             }
 
             pos = lastAcceptEnd;
@@ -63,17 +67,6 @@ public sealed class Lexer
 
         tokens.Add(new Token(TokenKind.End, "", input.Length));
         return tokens;
-    }
-
-    // Số không được dính liền dấu '.' (vd "1.2.3"). Số có tiền tố, và mọi số ở chế độ lập trình, không được dính
-    // chữ/số phía sau: đó là chữ số sai cơ số (vd "0b102", "0xFG", "102" ở hệ BIN, "1A" ở hệ DEC).
-    private void CheckNumberEnd(string input, int end, DfaState state)
-    {
-        if (end >= input.Length) return;
-        char c = input[end];
-        bool strict = _dfa.ProgrammerMode || LexerDfa.IsRadixNumber(state);
-        if (c == '.' || (strict && char.IsAsciiLetterOrDigit(c)))
-            throw new CalcException($"Số không hợp lệ: ký tự '{c}' tại vị trí {end}", end);
     }
 
     private CalcException ErrorAt(string input, int pos)

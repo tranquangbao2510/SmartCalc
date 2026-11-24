@@ -12,7 +12,7 @@ public sealed record AppSettings
     public AppTheme Theme { get; init; } = AppTheme.Light;
     public bool Topmost { get; init; }
     public AngleMode AngleMode { get; init; } = AngleMode.Deg;
-    public int Mode { get; init; } = 1;          // 1..7 theo SPEC
+    public int Mode { get; init; } = 1;          // 1..6 theo SPEC
     public double WindowWidth { get; init; } = 1100;
     public double WindowHeight { get; init; } = 720;
     public int ProgrammerRadix { get; init; } = 10;
@@ -28,7 +28,7 @@ public sealed record AppSettings
         {
             Theme = Enum.IsDefined(s.Theme) ? s.Theme : AppTheme.Light,
             AngleMode = Enum.IsDefined(s.AngleMode) ? s.AngleMode : AngleMode.Deg,
-            Mode = s.Mode is >= 1 and <= 7 ? s.Mode : 1,
+            Mode = s.Mode == 7 ? 6 : s.Mode is >= 1 and <= 6 ? s.Mode : 1,
             WindowWidth = s.WindowWidth is >= 360 and <= 10000 ? s.WindowWidth : 1100,
             WindowHeight = s.WindowHeight is >= 520 and <= 10000 ? s.WindowHeight : 720,
             ProgrammerRadix = s.ProgrammerRadix is 2 or 8 or 10 or 16 ? s.ProgrammerRadix : 10,

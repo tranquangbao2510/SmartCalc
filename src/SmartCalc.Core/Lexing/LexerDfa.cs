@@ -54,13 +54,14 @@ public enum DfaState
     Exp,        // "1.5e-3"       (kết thúc)
 
     // --- Số có tiền tố (chỉ ở chế độ lập trình) ---
-    HexPrefix,  // "0x"  (chưa kết thúc)
+    HexPrefix,  // "0x"  (kết thúc Error khi chưa có chữ số)
     Hex,        // "0xFF"(kết thúc)
-    BinPrefix,  // "0b"
+    BinPrefix,  // "0b"  (kết thúc Error khi chưa có chữ số)
     Bin,        // "0b101"
-    OctPrefix,  // "0o"
+    OctPrefix,  // "0o"  (kết thúc Error khi chưa có chữ số)
     OctNum,     // "0o17"
     RadixInt,   // số nguyên không tiền tố theo cơ số đang chọn, vd "FF" ở hệ HEX (kết thúc)
+    BadNumber,  // số sai: kết thúc sinh Error, thắng token số ngắn hơn
 
     // --- Định danh ---
     Ident,      // "sin", "pi", "Ans" (kết thúc)
@@ -97,9 +98,6 @@ public sealed class LexerDfa
     // Trạng thái kết thúc nhưng không sinh token (khoảng trắng)
     private readonly HashSet<DfaState> _skip = new() { DfaState.Space };
 
-    // Các trạng thái số có tiền tố cơ số: không được dính liền chữ/số phía sau
-    private static readonly HashSet<DfaState> RadixStates = new() { DfaState.Hex, DfaState.Bin, DfaState.OctNum };
-
     public bool ProgrammerMode { get; }
 
     /// <summary>Cơ số của số không có tiền tố (chỉ có ý nghĩa ở chế độ lập trình): 2, 8, 10, 16.</summary>
@@ -121,8 +119,6 @@ public sealed class LexerDfa
     public bool IsSkip(DfaState state) => _skip.Contains(state);
 
     public TokenKind TokenKindOf(DfaState state) => _accepting[state];
-
-    public static bool IsRadixNumber(DfaState state) => RadixStates.Contains(state);
 
     /// <summary>Phân lớp một ký tự vào CharClass (ánh xạ Σ -> lớp ký tự).</summary>
     public static CharClass Classify(char c)
@@ -173,6 +169,9 @@ public sealed class LexerDfa
             CharClass.HexLetter, CharClass.Letter,
         };
 
+        Accept(TokenKind.Error, DfaState.BadNumber);
+        Add(DfaState.BadNumber, [.. digits, .. letters, CharClass.Dot], DfaState.BadNumber);
+
         // ===== Định danh: [a-zA-Z]+ =====
         Add(DfaState.Start, letters, DfaState.Ident);
         Add(DfaState.Ident, letters, DfaState.Ident);
@@ -213,7 +212,16 @@ public sealed class LexerDfa
         Add(DfaState.Zero, radixDigits, DfaState.RadixInt);
         Add(DfaState.RadixInt, radixDigits, DfaState.RadixInt);
 
+        // Mọi hậu tố sai cơ số đều là cạnh tới BadNumber; cạnh hợp lệ ghi đè bên dưới.
+        foreach (var state in new[] { DfaState.Zero, DfaState.RadixInt,
+                     DfaState.HexPrefix, DfaState.Hex, DfaState.BinPrefix, DfaState.Bin,
+                     DfaState.OctPrefix, DfaState.OctNum })
+            Add(state, [.. digits, .. letters, CharClass.Dot], DfaState.BadNumber);
+        Add(DfaState.Zero, radixDigits, DfaState.RadixInt);
+        Add(DfaState.RadixInt, radixDigits, DfaState.RadixInt);
+
         // ===== Tiền tố 0x.., 0o.., 0b.. (0b không dùng ở hệ HEX vì 'b' là chữ số hex) =====
+        Accept(TokenKind.Error, DfaState.HexPrefix, DfaState.BinPrefix, DfaState.OctPrefix);
         Add(DfaState.Zero, CharClass.LetterX, DfaState.HexPrefix);
         Add(DfaState.HexPrefix, hexDigits, DfaState.Hex);
         Add(DfaState.Hex, hexDigits, DfaState.Hex);
@@ -272,6 +280,9 @@ public sealed class LexerDfa
         Add(DfaState.Exp, digits, DfaState.Exp);
 
         Accept(TokenKind.Number, DfaState.Zero, DfaState.Int, DfaState.IntDot, DfaState.Frac, DfaState.Exp);
+        Add(DfaState.IntDot, CharClass.Dot, DfaState.BadNumber);
+        Add(DfaState.Frac, CharClass.Dot, DfaState.BadNumber);
+        Add(DfaState.Exp, CharClass.Dot, DfaState.BadNumber);
     }
 
     private void Add(DfaState from, CharClass cls, DfaState to) => _table[(int)from, (int)cls] = to;

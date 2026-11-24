@@ -3,19 +3,7 @@ using SmartCalc.Core.Evaluation;
 
 namespace SmartCalc.Core.Input;
 
-/*
- * MÁY TRẠNG THÁI NHẬP LIỆU (máy Mealy: đầu ra = hành động gắn trên cạnh).
- *
- *   Trạng thái : Empty, Typing, ShowingResult, Error
- *   Đầu vào    : InputKind (lớp phím) — Operand, Operator, Equals, Clear, Backspace, Negate, Load
- *   Bảng       : Table[(trạng thái, lớp phím)] = (hành động, trạng thái kế, trạng thái kế khi hành động thất bại)
- *
- * Bảng phủ ĐỦ mọi cặp (trạng thái, lớp phím) — có test kiểm tra — nên không có if-else rải rác:
- * Process() chỉ tra bảng rồi thực thi hành động. Một số hành động có "điều kiện canh" (guard):
- *   - Evaluate  : thành công -> Next (ShowingResult), lỗi -> OnFailure (Error)
- *   - DeleteLast/Replace : biểu thức còn ký tự -> Next (Typing), rỗng -> OnFailure (Empty)
- * Xem docs/state-machine.md.
- */
+// DFA: chuẩn hoá kết quả đầu vào trước, rồi tra riêng bảng trạng thái và bảng hành động.
 
 public enum InputState { Empty, Typing, ShowingResult, Error }
 
@@ -31,19 +19,16 @@ public enum InputKind
     Load,      // nạp nguyên biểu thức (bấm vào lịch sử)
 }
 
+public enum InputSymbol
+{
+    Operand, Operator, EqualsOk, EqualsError, Clear,
+    BackspaceToEmpty, BackspaceKeep, Negate, LoadEmpty, LoadOk,
+}
+
 public enum InputAction
 {
-    Ignore,          // không làm gì
-    Append,          // nối text vào biểu thức
-    StartNew,        // bỏ kết quả cũ, bắt đầu biểu thức mới bằng text
-    ContinueFromAns, // biểu thức mới = "Ans" + text
-    Evaluate,        // tính biểu thức
-    ClearAll,        // xoá hết
-    DeleteLast,      // xoá ký tự/tên hàm cuối
-    ToggleNegate,    // đổi dấu cả biểu thức: e <-> −(e)
-    NegateAns,       // biểu thức mới = "−Ans"
-    Replace,         // thay cả biểu thức bằng text
-    Replay,          // xoá lỗi, về Empty rồi xử lý lại chính phím đó
+    Ignore, Append, StartNew, ContinueFromAns, CommitResult, ShowError,
+    ClearAll, DeleteLast, ToggleNegate, NegateAns, Replace, ClearAndAppend, ClearAndReplace,
 }
 
 /// <summary>Một sự kiện nhập: lớp phím + text gắn kèm (vd Operand "7", Operator "×").</summary>
@@ -67,50 +52,100 @@ public readonly record struct InputEvent(InputKind Kind, string Text = "")
         or '&' or '|' or '<' or '>';   // toán tử bit (chế độ lập trình); '~' là một ngôi nên thuộc Operand
 }
 
-public sealed record Transition(InputAction Action, InputState Next, InputState? OnFailure = null);
 
 public sealed class InputStateMachine
 {
-    // ======================= BẢNG CHUYỂN TRẠNG THÁI =======================
-    public static readonly IReadOnlyDictionary<(InputState, InputKind), Transition> Table =
-        new Dictionary<(InputState, InputKind), Transition>
+    public static readonly IReadOnlyDictionary<(InputState, InputSymbol), InputState> Table =
+        new System.Collections.ObjectModel.ReadOnlyDictionary<(InputState, InputSymbol), InputState>(
+        new Dictionary<(InputState, InputSymbol), InputState>
         {
-            // ---- Empty: chưa có gì ----
-            [(InputState.Empty, InputKind.Operand)]   = new(InputAction.Append, InputState.Typing),
-            [(InputState.Empty, InputKind.Operator)]  = new(InputAction.Append, InputState.Typing),
-            [(InputState.Empty, InputKind.Equals)]    = new(InputAction.Ignore, InputState.Empty),
-            [(InputState.Empty, InputKind.Clear)]     = new(InputAction.ClearAll, InputState.Empty),
-            [(InputState.Empty, InputKind.Backspace)] = new(InputAction.Ignore, InputState.Empty),
-            [(InputState.Empty, InputKind.Negate)]    = new(InputAction.Append, InputState.Typing),
-            [(InputState.Empty, InputKind.Load)]      = new(InputAction.Replace, InputState.Typing, InputState.Empty),
+            [(InputState.Empty, InputSymbol.Operand)] = InputState.Typing,
+            [(InputState.Empty, InputSymbol.Operator)] = InputState.Typing,
+            [(InputState.Empty, InputSymbol.EqualsOk)] = InputState.Empty,
+            [(InputState.Empty, InputSymbol.EqualsError)] = InputState.Empty,
+            [(InputState.Empty, InputSymbol.Clear)] = InputState.Empty,
+            [(InputState.Empty, InputSymbol.BackspaceToEmpty)] = InputState.Empty,
+            [(InputState.Empty, InputSymbol.BackspaceKeep)] = InputState.Empty,
+            [(InputState.Empty, InputSymbol.Negate)] = InputState.Typing,
+            [(InputState.Empty, InputSymbol.LoadEmpty)] = InputState.Empty,
+            [(InputState.Empty, InputSymbol.LoadOk)] = InputState.Typing,
+            [(InputState.Typing, InputSymbol.Operand)] = InputState.Typing,
+            [(InputState.Typing, InputSymbol.Operator)] = InputState.Typing,
+            [(InputState.Typing, InputSymbol.EqualsOk)] = InputState.ShowingResult,
+            [(InputState.Typing, InputSymbol.EqualsError)] = InputState.Error,
+            [(InputState.Typing, InputSymbol.Clear)] = InputState.Empty,
+            [(InputState.Typing, InputSymbol.BackspaceToEmpty)] = InputState.Empty,
+            [(InputState.Typing, InputSymbol.BackspaceKeep)] = InputState.Typing,
+            [(InputState.Typing, InputSymbol.Negate)] = InputState.Typing,
+            [(InputState.Typing, InputSymbol.LoadEmpty)] = InputState.Empty,
+            [(InputState.Typing, InputSymbol.LoadOk)] = InputState.Typing,
+            [(InputState.ShowingResult, InputSymbol.Operand)] = InputState.Typing,
+            [(InputState.ShowingResult, InputSymbol.Operator)] = InputState.Typing,
+            [(InputState.ShowingResult, InputSymbol.EqualsOk)] = InputState.ShowingResult,
+            [(InputState.ShowingResult, InputSymbol.EqualsError)] = InputState.ShowingResult,
+            [(InputState.ShowingResult, InputSymbol.Clear)] = InputState.Empty,
+            [(InputState.ShowingResult, InputSymbol.BackspaceToEmpty)] = InputState.ShowingResult,
+            [(InputState.ShowingResult, InputSymbol.BackspaceKeep)] = InputState.ShowingResult,
+            [(InputState.ShowingResult, InputSymbol.Negate)] = InputState.Typing,
+            [(InputState.ShowingResult, InputSymbol.LoadEmpty)] = InputState.Empty,
+            [(InputState.ShowingResult, InputSymbol.LoadOk)] = InputState.Typing,
+            [(InputState.Error, InputSymbol.Operand)] = InputState.Typing,
+            [(InputState.Error, InputSymbol.Operator)] = InputState.Typing,
+            [(InputState.Error, InputSymbol.EqualsOk)] = InputState.Empty,
+            [(InputState.Error, InputSymbol.EqualsError)] = InputState.Empty,
+            [(InputState.Error, InputSymbol.Clear)] = InputState.Empty,
+            [(InputState.Error, InputSymbol.BackspaceToEmpty)] = InputState.Empty,
+            [(InputState.Error, InputSymbol.BackspaceKeep)] = InputState.Empty,
+            [(InputState.Error, InputSymbol.Negate)] = InputState.Typing,
+            [(InputState.Error, InputSymbol.LoadEmpty)] = InputState.Empty,
+            [(InputState.Error, InputSymbol.LoadOk)] = InputState.Typing,
+        });
 
-            // ---- Typing: đang gõ biểu thức ----
-            [(InputState.Typing, InputKind.Operand)]   = new(InputAction.Append, InputState.Typing),
-            [(InputState.Typing, InputKind.Operator)]  = new(InputAction.Append, InputState.Typing),
-            [(InputState.Typing, InputKind.Equals)]    = new(InputAction.Evaluate, InputState.ShowingResult, InputState.Error),
-            [(InputState.Typing, InputKind.Clear)]     = new(InputAction.ClearAll, InputState.Empty),
-            [(InputState.Typing, InputKind.Backspace)] = new(InputAction.DeleteLast, InputState.Typing, InputState.Empty),
-            [(InputState.Typing, InputKind.Negate)]    = new(InputAction.ToggleNegate, InputState.Typing),
-            [(InputState.Typing, InputKind.Load)]      = new(InputAction.Replace, InputState.Typing, InputState.Empty),
-
-            // ---- ShowingResult: vừa bấm '=' thành công ----
-            [(InputState.ShowingResult, InputKind.Operand)]   = new(InputAction.StartNew, InputState.Typing),
-            [(InputState.ShowingResult, InputKind.Operator)]  = new(InputAction.ContinueFromAns, InputState.Typing),
-            [(InputState.ShowingResult, InputKind.Equals)]    = new(InputAction.Ignore, InputState.ShowingResult),
-            [(InputState.ShowingResult, InputKind.Clear)]     = new(InputAction.ClearAll, InputState.Empty),
-            [(InputState.ShowingResult, InputKind.Backspace)] = new(InputAction.Ignore, InputState.ShowingResult),
-            [(InputState.ShowingResult, InputKind.Negate)]    = new(InputAction.NegateAns, InputState.Typing),
-            [(InputState.ShowingResult, InputKind.Load)]      = new(InputAction.Replace, InputState.Typing, InputState.Empty),
-
-            // ---- Error: phím bất kỳ -> xoá lỗi, xử lý như Empty ----
-            [(InputState.Error, InputKind.Operand)]   = new(InputAction.Replay, InputState.Empty),
-            [(InputState.Error, InputKind.Operator)]  = new(InputAction.Replay, InputState.Empty),
-            [(InputState.Error, InputKind.Equals)]    = new(InputAction.Replay, InputState.Empty),
-            [(InputState.Error, InputKind.Clear)]     = new(InputAction.Replay, InputState.Empty),
-            [(InputState.Error, InputKind.Backspace)] = new(InputAction.Replay, InputState.Empty),
-            [(InputState.Error, InputKind.Negate)]    = new(InputAction.Replay, InputState.Empty),
-            [(InputState.Error, InputKind.Load)]      = new(InputAction.Replay, InputState.Empty),
-        };
+    public static readonly IReadOnlyDictionary<(InputState, InputSymbol), InputAction> ActionTable =
+        new System.Collections.ObjectModel.ReadOnlyDictionary<(InputState, InputSymbol), InputAction>(
+        new Dictionary<(InputState, InputSymbol), InputAction>
+        {
+            [(InputState.Empty, InputSymbol.Operand)] = InputAction.Append,
+            [(InputState.Empty, InputSymbol.Operator)] = InputAction.Append,
+            [(InputState.Empty, InputSymbol.EqualsOk)] = InputAction.Ignore,
+            [(InputState.Empty, InputSymbol.EqualsError)] = InputAction.Ignore,
+            [(InputState.Empty, InputSymbol.Clear)] = InputAction.ClearAll,
+            [(InputState.Empty, InputSymbol.BackspaceToEmpty)] = InputAction.Ignore,
+            [(InputState.Empty, InputSymbol.BackspaceKeep)] = InputAction.Ignore,
+            [(InputState.Empty, InputSymbol.Negate)] = InputAction.Append,
+            [(InputState.Empty, InputSymbol.LoadEmpty)] = InputAction.Replace,
+            [(InputState.Empty, InputSymbol.LoadOk)] = InputAction.Replace,
+            [(InputState.Typing, InputSymbol.Operand)] = InputAction.Append,
+            [(InputState.Typing, InputSymbol.Operator)] = InputAction.Append,
+            [(InputState.Typing, InputSymbol.EqualsOk)] = InputAction.CommitResult,
+            [(InputState.Typing, InputSymbol.EqualsError)] = InputAction.ShowError,
+            [(InputState.Typing, InputSymbol.Clear)] = InputAction.ClearAll,
+            [(InputState.Typing, InputSymbol.BackspaceToEmpty)] = InputAction.DeleteLast,
+            [(InputState.Typing, InputSymbol.BackspaceKeep)] = InputAction.DeleteLast,
+            [(InputState.Typing, InputSymbol.Negate)] = InputAction.ToggleNegate,
+            [(InputState.Typing, InputSymbol.LoadEmpty)] = InputAction.Replace,
+            [(InputState.Typing, InputSymbol.LoadOk)] = InputAction.Replace,
+            [(InputState.ShowingResult, InputSymbol.Operand)] = InputAction.StartNew,
+            [(InputState.ShowingResult, InputSymbol.Operator)] = InputAction.ContinueFromAns,
+            [(InputState.ShowingResult, InputSymbol.EqualsOk)] = InputAction.Ignore,
+            [(InputState.ShowingResult, InputSymbol.EqualsError)] = InputAction.Ignore,
+            [(InputState.ShowingResult, InputSymbol.Clear)] = InputAction.ClearAll,
+            [(InputState.ShowingResult, InputSymbol.BackspaceToEmpty)] = InputAction.Ignore,
+            [(InputState.ShowingResult, InputSymbol.BackspaceKeep)] = InputAction.Ignore,
+            [(InputState.ShowingResult, InputSymbol.Negate)] = InputAction.NegateAns,
+            [(InputState.ShowingResult, InputSymbol.LoadEmpty)] = InputAction.Replace,
+            [(InputState.ShowingResult, InputSymbol.LoadOk)] = InputAction.Replace,
+            [(InputState.Error, InputSymbol.Operand)] = InputAction.ClearAndAppend,
+            [(InputState.Error, InputSymbol.Operator)] = InputAction.ClearAndAppend,
+            [(InputState.Error, InputSymbol.EqualsOk)] = InputAction.ClearAll,
+            [(InputState.Error, InputSymbol.EqualsError)] = InputAction.ClearAll,
+            [(InputState.Error, InputSymbol.Clear)] = InputAction.ClearAll,
+            [(InputState.Error, InputSymbol.BackspaceToEmpty)] = InputAction.ClearAll,
+            [(InputState.Error, InputSymbol.BackspaceKeep)] = InputAction.ClearAll,
+            [(InputState.Error, InputSymbol.Negate)] = InputAction.ClearAndAppend,
+            [(InputState.Error, InputSymbol.LoadEmpty)] = InputAction.ClearAndReplace,
+            [(InputState.Error, InputSymbol.LoadOk)] = InputAction.ClearAndReplace,
+        });
 
     // ======================= DỮ LIỆU HIỂN THỊ =======================
     // ======================= ENGINE TÍNH TOÁN =======================
@@ -158,90 +193,97 @@ public sealed class InputStateMachine
     public event Action<string, string>? Evaluated;
 
     // ======================= XỬ LÝ =======================
+    private sealed record PreparedInput(InputSymbol Symbol, string Text = "", EngineResult? Result = null, CalcException? Error = null);
+
     public InputState Process(InputEvent input)
     {
-        var transition = Table[(State, input.Kind)];
-
-        if (transition.Action == InputAction.Replay)
-        {
-            Execute(InputAction.ClearAll, input);
-            State = transition.Next;           // = Empty
-            return Process(input);
-        }
-
-        bool ok = Execute(transition.Action, input);
-        State = ok ? transition.Next : transition.OnFailure ?? transition.Next;
+        var prepared = Prepare(input);
+        var key = (State, prepared.Symbol);
+        var next = Table[key];
+        Execute(ActionTable[key], prepared);
+        State = next;
         UpdatePreview();
         return State;
     }
 
-    /// <summary>Gọi lại khi đổi cấu hình engine (DEG/RAD, cơ số, kích thước word) để cập nhật xem trước.</summary>
     public void Refresh() => UpdatePreview();
 
-    // Thực thi hành động; trả về false khi "điều kiện canh" thất bại (xem bảng: cột OnFailure).
-    private bool Execute(InputAction action, InputEvent input)
+    // Kết quả thành ký hiệu đầu vào TRƯỚC khi tra hai bảng; không sửa trạng thái ở đây.
+    private PreparedInput Prepare(InputEvent input)
     {
-        switch (action)
+        switch (input.Kind)
         {
-            case InputAction.Ignore:
-                return true;
-            case InputAction.Append:
-                Expression = ExpressionEditor.Append(Expression, input.Kind == InputKind.Negate ? "−" : input.Text);
-                return true;
-            case InputAction.StartNew:
-                Expression = input.Text;
-                _last = null;
-                return true;
-            case InputAction.ContinueFromAns:
-                Expression = Engine.AnsText + input.Text;
-                _last = null;
-                return true;
-            case InputAction.NegateAns:
-                Expression = "−" + Engine.AnsText;
-                _last = null;
-                return true;
-            case InputAction.Evaluate:
-                return Evaluate();
-            case InputAction.ClearAll:
-                Expression = "";
-                _last = null;
-                ErrorMessage = "";
-                ErrorPosition = -1;
-                return true;
-            case InputAction.DeleteLast:
-                Expression = ExpressionEditor.DeleteLast(Expression);
-                return Expression.Length > 0;
-            case InputAction.ToggleNegate:
-                Expression = ExpressionEditor.ToggleNegate(Expression);
-                return true;
-            case InputAction.Replace:
-                Expression = input.Text;
-                _last = null;
-                return Expression.Length > 0;
-            default:
-                throw new InvalidOperationException($"Hành động không hỗ trợ: {action}");
+            case InputKind.Equals:
+                if (State != InputState.Typing) return new(InputSymbol.EqualsOk);
+                try { return new(InputSymbol.EqualsOk, Result: Engine.Evaluate(Expression)); }
+                catch (CalcException ex) { return new(InputSymbol.EqualsError, Error: ex); }
+            case InputKind.Backspace:
+                string rest = State == InputState.Typing ? ExpressionEditor.DeleteLast(Expression) : "";
+                return new(rest.Length == 0 ? InputSymbol.BackspaceToEmpty : InputSymbol.BackspaceKeep, rest);
+            case InputKind.Load:
+                return new(input.Text.Length == 0 ? InputSymbol.LoadEmpty : InputSymbol.LoadOk, input.Text);
+            case InputKind.Operand: return new(InputSymbol.Operand, input.Text);
+            case InputKind.Operator: return new(InputSymbol.Operator, input.Text);
+            case InputKind.Clear: return new(InputSymbol.Clear);
+            case InputKind.Negate: return new(InputSymbol.Negate, "\u2212");
+            default: throw new ArgumentOutOfRangeException(nameof(input));
         }
     }
 
-    private bool Evaluate()
+    private void ClearAll()
     {
-        try
+        Expression = "";
+        _last = null;
+        ErrorMessage = "";
+        ErrorPosition = -1;
+    }
+
+    private void Execute(InputAction action, PreparedInput input)
+    {
+        switch (action)
         {
-            var result = Engine.Evaluate(Expression);
-            string forHistory = Engine.ForHistory(Expression);   // trước Commit: còn Ans cũ
-            Engine.Commit(result);
-            _last = result;
-            ErrorMessage = "";
-            ErrorPosition = -1;
-            Evaluated?.Invoke(forHistory, result.Display);
-            return true;
-        }
-        catch (CalcException ex)
-        {
-            _last = null;
-            ErrorMessage = ex.Message;
-            ErrorPosition = ex.Position;
-            return false;
+            case InputAction.Ignore: break;
+            case InputAction.Append:
+                Expression = ExpressionEditor.Append(Expression, input.Text);
+                break;
+            case InputAction.ClearAndAppend:
+                ClearAll();
+                Expression = ExpressionEditor.Append(Expression, input.Text);
+                break;
+            case InputAction.StartNew:
+            case InputAction.Replace:
+                Expression = input.Text;
+                _last = null;
+                break;
+            case InputAction.ClearAndReplace:
+                ClearAll();
+                Expression = input.Text;
+                break;
+            case InputAction.ContinueFromAns:
+                Expression = Engine.AnsText + input.Text;
+                _last = null;
+                break;
+            case InputAction.NegateAns:
+                Expression = "\u2212" + Engine.AnsText;
+                _last = null;
+                break;
+            case InputAction.CommitResult:
+                string forHistory = Engine.ForHistory(Expression);
+                Engine.Commit(input.Result!);
+                _last = input.Result;
+                ErrorMessage = "";
+                ErrorPosition = -1;
+                Evaluated?.Invoke(forHistory, input.Result!.Display);
+                break;
+            case InputAction.ShowError:
+                _last = null;
+                ErrorMessage = input.Error!.Message;
+                ErrorPosition = input.Error.Position;
+                break;
+            case InputAction.ClearAll: ClearAll(); break;
+            case InputAction.DeleteLast: Expression = input.Text; break;
+            case InputAction.ToggleNegate: Expression = ExpressionEditor.ToggleNegate(Expression); break;
+            default: throw new ArgumentOutOfRangeException(nameof(action));
         }
     }
 

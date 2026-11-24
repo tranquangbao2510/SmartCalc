@@ -27,7 +27,6 @@ public sealed class Evaluator
 {
     private const double SafeMin = 1e-10;   // 17 chữ số + 10 số 0 đầu vẫn vừa 28 chữ số thập phân của decimal
     private const double SafeMax = 1e27;
-    private const double Epsilon = 1e-15;   // nhiễu làm tròn của hàm lượng giác
     private const int MaxFactorial = 170;    // 171! vượt quá double
 
     private readonly EvalContext _ctx;
@@ -161,7 +160,7 @@ public sealed class Evaluator
     }
 
     // ---------------- Giai thừa ----------------
-    private static double Factorial(double n, int position)
+    internal static double Factorial(double n, int position)
     {
         if (n < 0 || n != Math.Floor(n))
             throw new CalcException(
@@ -179,54 +178,12 @@ public sealed class Evaluator
     {
         double x = Evaluate(call.Argument);
         int p = call.Position;
-
-        switch (call.Function)
-        {
-            case "sin": return Clean(Math.Sin(ToRadians(x)));
-            case "cos": return Clean(Math.Cos(ToRadians(x)));
-            case "tan":
-            {
-                double rad = ToRadians(x);
-                if (Math.Abs(Math.Cos(rad)) < Epsilon)
-                    throw Domain($"tan không xác định tại {Format(x)}", p);
-                return Clean(Math.Tan(rad));
-            }
-            case "asin":
-                if (x < -1 || x > 1) throw Domain("asin chỉ nhận giá trị trong [-1, 1]", p);
-                return FromRadians(Math.Asin(x));
-            case "acos":
-                if (x < -1 || x > 1) throw Domain("acos chỉ nhận giá trị trong [-1, 1]", p);
-                return FromRadians(Math.Acos(x));
-            case "atan": return FromRadians(Math.Atan(x));
-            case "ln":
-                if (x <= 0) throw Domain("ln chỉ nhận số dương", p);
-                return Math.Log(x);
-            case "log":
-                if (x <= 0) throw Domain("log chỉ nhận số dương", p);
-                return Math.Log10(x);
-            case "sqrt":
-                if (x < 0) throw Domain("không lấy căn bậc hai của số âm", p);
-                return Math.Sqrt(x);
-            case "abs": return Math.Abs(x);
-            case "fact": return Factorial(x, p);
-            default: throw new CalcException($"Hàm không xác định '{call.Function}'", p);
-        }
+        if (!Builtins.FunctionMap.TryGetValue(call.Function, out var function))
+            throw new CalcException($"Hàm không xác định '{call.Function}'", p);
+        return function(x, _ctx, p);
     }
-
-    // Ở chế độ DEG: rút gọn góc theo 360 trước khi đổi để sin(180) ~ 0, tan(90) bắt được lỗi
-    private double ToRadians(double x) =>
-        _ctx.AngleMode == AngleMode.Deg ? (x % 360) * Math.PI / 180 : x;
-
-    private double FromRadians(double rad) =>
-        _ctx.AngleMode == AngleMode.Deg ? rad * 180 / Math.PI : rad;
-
-    private static double Clean(double v) => Math.Abs(v) < Epsilon ? 0 : v;
-
-    private static string Format(double v) => NumberFormatter.Format(v);
 
     private static CalcException DivideByZero(int position) =>
         new($"Không thể chia cho 0 (vị trí {position})", position);
 
-    private static CalcException Domain(string detail, int position) =>
-        new($"Lỗi miền xác định: {detail} (vị trí {position})", position);
 }

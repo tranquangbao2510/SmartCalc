@@ -21,7 +21,7 @@ public sealed record MemoryItemViewModel(int Index, double Value, string Text);
 
 /// <summary>
 /// ViewModel chính = máy tính Cơ bản/Khoa học (kế thừa KeypadViewModel) + điều hướng chế độ, lịch sử, bộ nhớ,
-/// theme, ghim, và các VM con của chế độ Lập trình / Đổi đơn vị / Ngày tháng.
+/// theme, ghim, và các VM con của chế độ Lập trình / Đổi đơn vị.
 /// Chỉ "nối dây": logic nằm trong Core (InputStateMachine, HistoryStore, MemoryStore, ...).
 /// </summary>
 public partial class MainViewModel : KeypadViewModel
@@ -50,13 +50,11 @@ public partial class MainViewModel : KeypadViewModel
             new(3, "Lập trình", "", true),
             new(4, "Vẽ đồ thị", "", true),
             new(5, "Đổi đơn vị", "", true),
-            new(6, "Ngày tháng", "", true),
-            new(7, "Thống kê", "Σ", true, IconIsText: true),
+            new(6, "Thống kê", "Σ", true, IconIsText: true),
         ];
 
         Programmer = new ProgrammerViewModel(settings.ProgrammerRadix, settings.WordSize, () => IsProgrammerMode, SaveSettings);
         Converter = new UnitConverterViewModel();
-        Dates = new DateViewModel();
         Graph = new GraphViewModel();
         Statistics = new StatisticsViewModel();
 
@@ -81,13 +79,12 @@ public partial class MainViewModel : KeypadViewModel
 
     public ProgrammerViewModel Programmer { get; }
     public UnitConverterViewModel Converter { get; }
-    public DateViewModel Dates { get; }
     public GraphViewModel Graph { get; }
     public StatisticsViewModel Statistics { get; }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsBasicMode), nameof(IsScientificMode), nameof(IsCalculatorMode),
-        nameof(IsProgrammerMode), nameof(IsConverterMode), nameof(IsDateMode), nameof(IsGraphMode), nameof(IsStatisticsMode), nameof(IsComingSoon),
+        nameof(IsProgrammerMode), nameof(IsConverterMode), nameof(IsGraphMode), nameof(IsStatisticsMode), nameof(IsComingSoon),
         nameof(ShowSidePanel), nameof(ShowSidePanelToggle), nameof(IsSidePanelOverlay), nameof(MainColumnSpan))]
     public partial ModeItem SelectedMode { get; set; }
 
@@ -97,9 +94,8 @@ public partial class MainViewModel : KeypadViewModel
     public bool IsCalculatorMode => SelectedMode.Index is 1 or 2;
     public bool IsProgrammerMode => SelectedMode.Index == 3;
     public bool IsConverterMode => SelectedMode.Index == 5;
-    public bool IsDateMode => SelectedMode.Index == 6;
     public bool IsGraphMode => SelectedMode.Index == 4;
-    public bool IsStatisticsMode => SelectedMode.Index == 7;
+    public bool IsStatisticsMode => SelectedMode.Index == 6;
     public bool IsComingSoon => !SelectedMode.IsAvailable;
 
     partial void OnSelectedModeChanged(ModeItem value)

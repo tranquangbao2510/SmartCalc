@@ -35,21 +35,20 @@ public class InputStateMachineTests
     public void Table_CoversEveryStateAndKind()
     {
         foreach (var s in Enum.GetValues<InputState>())
-            foreach (var k in Enum.GetValues<InputKind>())
+            foreach (var k in Enum.GetValues<InputSymbol>())
                 Assert.True(InputStateMachine.Table.ContainsKey((s, k)), $"Thiếu ô ({s}, {k})");
         Assert.Equal(
-            Enum.GetValues<InputState>().Length * Enum.GetValues<InputKind>().Length,
+            Enum.GetValues<InputState>().Length * Enum.GetValues<InputSymbol>().Length,
             InputStateMachine.Table.Count);
     }
 
     [Fact]
-    public void Table_OnlyGuardedActionsHaveFailureState()
+    public void ActionTable_CoversEveryStateAndSymbol()
     {
-        foreach (var (key, t) in InputStateMachine.Table)
-        {
-            bool guarded = t.Action is InputAction.Evaluate or InputAction.DeleteLast or InputAction.Replace;
-            Assert.Equal(guarded, t.OnFailure.HasValue);
-        }
+        foreach (var state in Enum.GetValues<InputState>())
+            foreach (var symbol in Enum.GetValues<InputSymbol>())
+                Assert.True(InputStateMachine.ActionTable.ContainsKey((state, symbol)));
+        Assert.Equal(InputStateMachine.Table.Count, InputStateMachine.ActionTable.Count);
     }
 
     // ---------- Empty ----------

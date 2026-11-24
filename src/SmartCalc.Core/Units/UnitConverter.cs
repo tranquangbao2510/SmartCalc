@@ -1,5 +1,5 @@
-using System.Globalization;
 using SmartCalc.Core.Errors;
+using SmartCalc.Core.Lexing;
 
 namespace SmartCalc.Core.Units;
 
@@ -187,8 +187,7 @@ public static class UnitConverter
         value = 0;
         if (string.IsNullOrWhiteSpace(text)) return false;
         string s = text.Trim().Replace('−', '-').Replace(',', '.').Replace(" ", "");
-        return decimal.TryParse(s, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint | NumberStyles.AllowExponent,
-            CultureInfo.InvariantCulture, out value);
+        return NumberReader.TryParse(s, out value);
     }
 
     /// <summary>Hiển thị số (xem <see cref="SmartCalc.Core.Formatting.DecimalFormatter"/>).</summary>

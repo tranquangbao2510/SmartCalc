@@ -41,14 +41,13 @@ Trạng thái: Empty, Typing, ShowingResult, Error.
 - '=' khi Typing -> ShowingResult hoặc Error
 Cài đặt bằng bảng chuyển trạng thái tường minh, không if-else rải rác.
 
-## Chế độ (sidebar bên trái, phím tắt Alt+1..7)
+## Chế độ (sidebar bên trái, phím tắt Alt+1..6)
 1. Cơ bản: + - × ÷ % ± ⌫ C = , ngoặc
 2. Khoa học: thêm sin cos tan (và nghịch đảo qua nút 2nd), ln log x² xʸ √ n! π e 1/x, DEG/RAD
 3. Lập trình: HEX/DEC/OCT/BIN hiển thị song song, AND OR XOR NOT << >>, kích thước QWORD/DWORD/WORD/BYTE
 4. Vẽ đồ thị: nhập y = f(x) (tối đa 3 hàm, màu khác nhau), lưới + trục, zoom chuột, kéo để di chuyển
 5. Đổi đơn vị: độ dài, khối lượng, nhiệt độ, diện tích, thể tích, tốc độ, thời gian, dữ liệu (bit/byte)
-6. Ngày tháng: khoảng cách giữa 2 ngày (năm/tháng/tuần/ngày), cộng/trừ ngày
-7. Thống kê: nhập dãy số -> n, tổng, trung bình, trung vị, mode, min, max, phương sai, độ lệch chuẩn (mẫu & tổng thể)
+6. Thống kê: nhập dãy số -> n, tổng, trung bình, trung vị, mode, min, max, phương sai, độ lệch chuẩn (mẫu & tổng thể)
 
 ## Tính năng chung
 - Màn hình: dòng trên = biểu thức (chữ nhỏ, xám), dòng dưới = kết quả (chữ to). Lỗi hiện đỏ + vị trí.
@@ -57,6 +56,31 @@ Cài đặt bằng bảng chuyển trạng thái tường minh, không if-else r
 - Bộ nhớ: MC MR M+ M− MS, tab Bộ nhớ trong panel phải. Nút Ans.
 - Theme sáng/tối, nút ghim cửa sổ luôn trên cùng (Topmost). Lưu cài đặt.
 - Cửa sổ co giãn được, nút bấm co theo.
+
+## Quy tắc thiết kế
+
+- **Lexer là DFA thuần:** mọi luật cú pháp số nằm trong bảng δ. Số có dấu chấm thừa, chữ số sai cơ số
+  hoặc chữ dính số lập trình đi tới trạng thái kết thúc `BadNumber`, sinh `TokenKind.Error`.
+  Các trạng thái tiền tố chưa đủ chữ số cũng sinh Error. Khớp dài nhất quyết định token; vòng quét không
+  kiểm tra hậu tố số ngoài δ. Giữ nguyên thông báo tiếng Việt và vị trí ký tự sai; chế độ thường vẫn cho
+  phép nhân ngầm `2pi`, `3(4+1)`, `2sin(30)` và lùi khớp khi số mũ chưa hoàn chỉnh.
+- **Máy nhập liệu là DFA toàn phần:** `Table[(InputState, InputSymbol)] -> InputState` có đủ 4 × 10 ô.
+  Bảng `ActionTable[(InputState, InputSymbol)] -> InputAction` riêng cũng đủ 40 ô. Chuẩn hoá kết quả trước
+  khi tra bảng: EqualsOk/EqualsError, BackspaceToEmpty/BackspaceKeep, LoadEmpty/LoadOk.
+  Mỗi ký hiệu từ Error có chuyển tường minh. Không có OnFailure, Replay hay gọi đệ quy Process;
+  hành động không quyết định trạng thái kế tiếp. Hai bảng chỉ đọc sau khi khởi tạo.
+- **Dùng chung DFA số:** `StatisticsCalculator.Parse` và `UnitConverter.TryParse` gọi `NumberReader`,
+  chạy DFA số của Lexer để nhận toàn bộ giá trị; không dùng `decimal.TryParse` kiểm tra cú pháp.
+  Dấu `+`, `-`, `−` đầu số được tách trước khi chạy DFA; `decimal.Parse` chỉ chuyển giá trị sau khi nhận.
+  Giữ các dấu phân tách thống kê (khoảng trắng, xuống dòng, phẩy, chấm phẩy), dấu phẩy thập phân và
+  chuẩn hoá khoảng trắng của Đổi đơn vị, cùng phạm vi/làm tròn decimal hiện có.
+- **Cấu trúc dữ liệu:** HistoryStore dùng `Queue<HistoryEntry>`, mục cũ nhất ở đầu; đủ 100 mục thì
+  Dequeue trước khi Enqueue. UI và JSON vẫn mới nhất trước. Xoá một mục giữ thứ tự các mục còn lại.
+  Builtins giữ Dictionary tên hàm → `Func<double, EvalContext, int, double>`; Evaluator tra Dictionary
+  để gọi hàm, giữ nguyên DEG/RAD, kiểm tra miền xác định và vị trí lỗi.
+- **Kiểm chứng bảng:** test từng ô Lexer ở chế độ thường và lập trình với cơ số 2/8/10/16; kiểm tra
+  giá trị mọi ô của hai bảng nhập liệu và các kịch bản phím cũ. Differential test dùng .NET Regex
+  trong project test để đối chiếu ít nhất 20.000 chuỗi ngẫu nhiên mỗi cấu hình. Core không dùng Regex.
 
 ## Quy tắc làm việc cho agent
 - Làm ĐÚNG phạm vi giai đoạn được giao, không làm lấn sang giai đoạn sau.

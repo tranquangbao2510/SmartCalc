@@ -1,5 +1,5 @@
-using System.Globalization;
 using SmartCalc.Core.Errors;
+using SmartCalc.Core.Lexing;
 
 namespace SmartCalc.Core.Statistics;
 
@@ -48,7 +48,7 @@ public static class StatisticsCalculator
             while (i < text.Length && !IsSeparator(text[i])) i++;
             string token = text[start..i];
 
-            if (!decimal.TryParse(token.Replace('−', '-'), NumberStyles.Float, CultureInfo.InvariantCulture, out decimal v))
+            if (!NumberReader.TryParse(token, out decimal v))
                 throw new CalcException($"'{token}' không phải là số (vị trí {start})", start);
             values.Add(v);
         }

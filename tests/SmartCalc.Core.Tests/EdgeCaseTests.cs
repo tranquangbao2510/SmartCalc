@@ -1,4 +1,3 @@
-using SmartCalc.Core.Dates;
 using SmartCalc.Core.Errors;
 using SmartCalc.Core.Evaluation;
 using SmartCalc.Core.Graphing;
@@ -50,7 +49,6 @@ public class EmptyInputTests
         Assert.Throws<CalcException>(() => PlotFunction.Compile(""));
         Assert.Throws<CalcException>(() => StatisticsCalculator.Compute(""));
         Assert.False(UnitConverter.TryParse("", out _));
-        Assert.False(DateCalculator.TryParse("", out _, out _));
     }
 }
 
@@ -218,38 +216,6 @@ public class ExtremeNumberTests
     }
 }
 
-public class DateBoundaryTests
-{
-    [Fact]
-    public void Difference_NearYear9999_DoesNotThrow()
-    {
-        // trước đây: vòng đếm tháng thử cộng sang năm 10000 -> ArgumentOutOfRangeException
-        var d = DateCalculator.Difference(new DateOnly(9999, 1, 15), new DateOnly(9999, 12, 31));
-        Assert.Equal((0, 11, 2, 2), (d.Years, d.Months, d.Weeks, d.Days));
-    }
-
-    [Fact]
-    public void Difference_FullRange()
-    {
-        var d = DateCalculator.Difference(DateOnly.MinValue, DateOnly.MaxValue);
-        Assert.Equal(9998, d.Years);
-        Assert.Equal(11, d.Months);
-        Assert.Equal(DateOnly.MaxValue.DayNumber, d.TotalDays);
-    }
-
-    [Theory]
-    [InlineData(0, 0, int.MaxValue, 0)]          // trước đây: weeks*7 tràn int âm thầm
-    [InlineData(0, 0, 0, int.MaxValue)]
-    [InlineData(int.MaxValue, 0, 0, 0)]
-    [InlineData(0, int.MaxValue, 0, 0)]
-    public void Add_HugeAmounts_IsRangeError(int years, int months, int weeks, int days) =>
-        Assert.Throws<CalcException>(() => DateCalculator.Add(new DateOnly(2024, 1, 1), years, months, weeks, days));
-
-    [Fact]
-    public void Add_NegativeAmounts_AreRejected() =>
-        Assert.Throws<ArgumentOutOfRangeException>(() => DateCalculator.Add(new DateOnly(2024, 1, 1), -1, 0, 0, 0));
-}
-
 public sealed class CorruptFileTests : IDisposable
 {
     private readonly string _dir = Path.Combine(Path.GetTempPath(), "SmartCalcTests", Guid.NewGuid().ToString("N"));
@@ -306,7 +272,6 @@ public class CultureIndependenceTests
             System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.GetCultureInfo(culture);
             Assert.Equal("0.5", Calculator.EvaluateToString("1/2"));
             Assert.Equal("1 234.5", UnitConverter.Format(1234.5m));
-            Assert.Equal("29/02/2024", DateCalculator.Format(new DateOnly(2024, 2, 29)));
             Assert.Equal(2.5m, StatisticsCalculator.Compute("2 3").Mean);
             Assert.Equal("−(1.5)", ExpressionEditor.ToggleNegate("1.5"));
             Assert.Equal("1.5", ExpressionEditor.ToggleNegate("−(1.5)"));

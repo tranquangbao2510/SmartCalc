@@ -1,145 +1,115 @@
-# Máy trạng thái nhập liệu (InputStateMachine)
+﻿# Máy trạng thái nhập liệu (InputStateMachine)
 
-Code: `src/SmartCalc.Core/Input/InputStateMachine.cs` (bảng chuyển trạng thái), `ExpressionEditor.cs` (thao tác chuỗi).
-Test: `tests/SmartCalc.Core.Tests/Input/InputStateMachineTests.cs`, `ExpressionEditorTests.cs`.
+Mã: `src/SmartCalc.Core/Input/InputStateMachine.cs`, `ExpressionEditor.cs`, `ExpressionEngine.cs`.
+Test: `tests/SmartCalc.Core.Tests/Input/`.
 
-Giao diện (WPF) **không tự quyết định** khi nào xoá màn hình, khi nào nối "Ans"… Nó chỉ biến mỗi phím bấm thành một `InputEvent` rồi gọi `Process()`. Mọi hành vi nằm trong bảng dưới đây.
+## 1. Mô hình và chuẩn hoá đầu vào
 
-## 1. Mô hình
+Máy Mealy **M = (Q, Σ, Λ, δ, λ, Empty)** có 4 trạng thái Q = {Empty, Typing,
+ShowingResult, Error}. δ là hàm toàn phần **Q × Σ → Q**, bảng `Table` chỉ đọc;
+λ là bảng hành động `ActionTable` độc lập, cũng toàn phần. Mỗi bảng có **40 ô**.
 
-Đây là một **máy Mealy**: đầu ra (hành động) gắn trên **cạnh** chứ không gắn trên trạng thái.
+UI gửi 7 loại phím `InputKind` qua `InputEvent`. Trước khi tra bảng, `Prepare` chuyển
+chúng thành 10 ký hiệu `InputSymbol`; không cập nhật trạng thái hay ghi Ans ở bước này.
 
-**M = (Q, Σ, Λ, δ, λ, q0)**
+| Phím thô | Chuẩn hoá thành ký hiệu | Dữ liệu mang theo |
+|---|---|---|
+| Operand | Operand | text số, hằng, hàm, ngoặc mở |
+| Operator | Operator | text toán tử, hậu tố, ngoặc đóng |
+| Equals khi Typing | EqualsOk / EqualsError | EngineResult / CalcException của lần tính |
+| Equals ở trạng thái khác | EqualsOk | không tính, không có kết quả mới |
+| Clear | Clear | rỗng |
+| Backspace khi Typing | BackspaceToEmpty / BackspaceKeep | biểu thức sau DeleteLast, dựa trên độ dài |
+| Backspace ở trạng thái khác | BackspaceToEmpty | không sửa biểu thức; bảng quyết định tác dụng |
+| Negate | Negate | `−` |
+| Load | LoadEmpty / LoadOk | toàn bộ text nạp, dựa trên độ dài |
 
-| Thành phần | Trong code |
+FromText phân loại theo ký tự đầu; toán tử `+ − × ÷ ^ % ! ) & \| << >>` là Operator,
+`~` một ngôi là Operand. Bàn phím thật, nút bấm và dán text dùng chung đường xử lý.
+
+## 2. Bảng chuyển δ
+
+Mọi ô đều ghi trạng thái đích, kể cả các cặp không sinh ra trong thao tác bình thường.
+
+| Q \ Σ | Operand | Operator | EqualsOk | EqualsError | Clear | BackspaceToEmpty | BackspaceKeep | Negate | LoadEmpty | LoadOk |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Empty | Typing | Typing | Empty | Empty | Empty | Empty | Empty | Typing | Empty | Typing |
+| Typing | Typing | Typing | ShowingResult | Error | Empty | Empty | Typing | Typing | Empty | Typing |
+| ShowingResult | Typing | Typing | ShowingResult | ShowingResult | Empty | ShowingResult | ShowingResult | Typing | Empty | Typing |
+| Error | Typing | Typing | Empty | Empty | Empty | Empty | Empty | Typing | Empty | Typing |
+
+## 3. Bảng hành động λ
+
+| Q \ Σ | Operand | Operator | EqualsOk | EqualsError | Clear | BackspaceToEmpty | BackspaceKeep | Negate | LoadEmpty | LoadOk |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Empty | Append | Append | Ignore | Ignore | ClearAll | Ignore | Ignore | Append | Replace | Replace |
+| Typing | Append | Append | CommitResult | ShowError | ClearAll | DeleteLast | DeleteLast | ToggleNegate | Replace | Replace |
+| ShowingResult | StartNew | ContinueFromAns | Ignore | Ignore | ClearAll | Ignore | Ignore | NegateAns | Replace | Replace |
+| Error | ClearAndAppend | ClearAndAppend | ClearAll | ClearAll | ClearAll | ClearAll | ClearAll | ClearAndAppend | ClearAndReplace | ClearAndReplace |
+
+| Hành động | Tác dụng |
 |---|---|
-| Q: trạng thái | `InputState` = { Empty, Typing, ShowingResult, Error } |
-| Σ: bảng chữ cái vào (lớp phím) | `InputKind` = { Operand, Operator, Equals, Clear, Backspace, Negate, Load } |
-| Λ: bảng chữ cái ra (hành động) | `InputAction` = { Append, StartNew, ContinueFromAns, Evaluate, ClearAll, DeleteLast, ToggleNegate, NegateAns, Replace, Replay, Ignore } |
-| δ, λ: hàm chuyển + hàm xuất | `InputStateMachine.Table[(state, kind)] = Transition(Action, Next, OnFailure)` |
-| q0 | `Empty` |
+| Ignore | giữ dữ liệu |
+| Append | ExpressionEditor.Append; giữ quy tắc thay toán tử trước, ngoại lệ dấu trừ cho `2×−3` |
+| StartNew / Replace | biểu thức = text, xoá kết quả cũ |
+| ContinueFromAns | biểu thức = Engine.AnsText + text, xoá kết quả cũ |
+| NegateAns | biểu thức = `−` + Engine.AnsText, xoá kết quả cũ |
+| ToggleNegate | đổi `e` ↔ `−(e)` |
+| DeleteLast | gán biểu thức đã chuẩn bị; xoá cả tên hàm/hằng hoặc một ký tự như trước |
+| CommitResult | lấy ForHistory trước Commit; ghi kết quả/Ans, xoá lỗi, phát Evaluated đúng một lần |
+| ShowError | giữ biểu thức, xoá kết quả cũ, lấy nguyên Message/Position từ CalcException |
+| ClearAll | xoá biểu thức, kết quả và lỗi; không xoá Ans của engine |
+| ClearAndAppend | ClearAll rồi Append trong cùng hành động |
+| ClearAndReplace | ClearAll rồi gán biểu thức nạp |
 
-### Lớp phím
+Không có cột OnFailure, hành động Replay hoặc gọi lại Process. Hàng Error xử lý trực tiếp
+từng ký hiệu nên `Error + 5` chuyển thẳng thành Typing với biểu thức `5`.
 
-| InputKind | Phím |
-|---|---|
-| Operand | chữ số, `.`, `π`, `e`, `Ans`, hàm `sin(` `√(` …, `(`: **bắt đầu** một toán hạng |
-| Operator | `+ − × ÷ ^ % ! )`, `x²` (`^2`), `1/x` (`^(−1)`): **cần** toán hạng bên trái |
-| Equals | `=`, Enter |
-| Clear | `C`, Esc, Delete |
-| Backspace | `⌫`, Backspace |
-| Negate | `±` |
-| Load | bấm một dòng trong Lịch sử |
+Process chuẩn bị đầu vào, tra δ và λ bằng cùng khoá, thực thi hành động, gán trạng thái
+đã tra rồi cập nhật Preview. Hành động không trả kết quả thành công/thất bại để chọn nhánh.
 
-`InputEvent.FromText()` phân lớp text theo ký tự đầu tiên. Bàn phím ảo, bàn phím thật và Ctrl+V đều đi qua cùng một đường này.
-
-### Điều kiện canh (guard)
-
-Một số hành động có thể thất bại; khi đó máy đi theo cột **OnFailure**:
-- `Evaluate`: tính thành công → `ShowingResult`; ném `CalcException` → `Error` (lưu thông báo + vị trí lỗi).
-- `DeleteLast`, `Replace`: biểu thức còn ký tự → `Typing`; rỗng → `Empty`.
-
-Có test bảo đảm **chỉ** ba hành động này có OnFailure, và bảng có **đủ 4 × 7 = 28 ô**. Nhờ vậy không có cặp (trạng thái, phím) nào bị bỏ sót, và `Process()` không cần if-else theo trạng thái.
-
-## 2. Bảng chuyển trạng thái
-
-Ô ghi: `hành động → trạng thái kế` (`| trạng thái khi thất bại`).
-
-| Trạng thái \ Phím | Operand | Operator | Equals | Clear | Backspace | Negate | Load |
-|---|---|---|---|---|---|---|---|
-| **Empty** | Append → Typing | Append → Typing | Ignore → Empty | ClearAll → Empty | Ignore → Empty | Append "−" → Typing | Replace → Typing \| Empty |
-| **Typing** | Append → Typing | Append → Typing | **Evaluate → ShowingResult \| Error** | ClearAll → Empty | DeleteLast → Typing \| Empty | ToggleNegate → Typing | Replace → Typing \| Empty |
-| **ShowingResult** | **StartNew → Typing** | **ContinueFromAns → Typing** | Ignore → ShowingResult | ClearAll → Empty | Ignore → ShowingResult | NegateAns → Typing | Replace → Typing \| Empty |
-| **Error** | **Replay** | **Replay** | **Replay** | **Replay** | **Replay** | **Replay** | **Replay** |
-
-`Replay` = xoá lỗi, về `Empty`, rồi **xử lý lại chính phím đó** bằng hàng Empty (đúng quy tắc "Error + phím bất kỳ → xoá lỗi, xử lý như Empty" trong SPEC). Ví dụ: đang lỗi mà gõ `5`, máy sang Empty rồi Append, kết quả là Typing `"5"`.
-
-Các quy tắc trong SPEC ứng với những ô **in đậm**:
-
-| SPEC | Ô trong bảng |
-|---|---|
-| ShowingResult + gõ số → biểu thức mới | (ShowingResult, Operand) = StartNew |
-| ShowingResult + gõ toán tử → nối tiếp từ "Ans" | (ShowingResult, Operator) = ContinueFromAns, tức biểu thức = `"Ans" + toán tử` |
-| Error + phím bất kỳ → xoá lỗi, xử lý như Empty | cả hàng Error = Replay |
-| '=' khi Typing → ShowingResult hoặc Error | (Typing, Equals) = Evaluate với guard |
-
-## 3. Sơ đồ trạng thái
+## 4. Sơ đồ trạng thái
 
 ```mermaid
 stateDiagram-v2
     direction LR
     [*] --> Empty
-
-    Empty --> Typing : Operand / Operator / ± [Append]
-    Empty --> Empty : = / ⌫ [Ignore], C [ClearAll]
-    Empty --> Typing : Load [Replace]
-
-    Typing --> Typing : Operand / Operator [Append]
-    Typing --> Typing : ⌫ [DeleteLast, còn ký tự]
-    Typing --> Empty : ⌫ [DeleteLast, hết ký tự]
-    Typing --> Typing : ± [ToggleNegate]
-    Typing --> Empty : C [ClearAll]
-    Typing --> ShowingResult : = [Evaluate, thành công]
-    Typing --> Error : = [Evaluate, CalcException]
-
-    ShowingResult --> Typing : Operand [StartNew]
-    ShowingResult --> Typing : Operator [ContinueFromAns]
-    ShowingResult --> Typing : ± [NegateAns]
-    ShowingResult --> ShowingResult : = / ⌫ [Ignore]
-    ShowingResult --> Empty : C [ClearAll]
-
-    Error --> Empty : phím bất kỳ [Replay: xoá lỗi rồi xử lý lại phím như Empty]
-
-    note right of Error
-        Replay không dừng ở Empty:
-        phím được xử lý tiếp theo hàng Empty,
-        vd Error + "5" => Typing "5"
-    end note
+    Empty --> Typing : Operand, Operator, Negate, LoadOk
+    Empty --> Empty : EqualsOk, EqualsError, Clear, BackspaceToEmpty, BackspaceKeep, LoadEmpty
+    Typing --> Typing : Operand, Operator, BackspaceKeep, Negate, LoadOk
+    Typing --> Empty : Clear, BackspaceToEmpty, LoadEmpty
+    Typing --> ShowingResult : EqualsOk / CommitResult
+    Typing --> Error : EqualsError / ShowError
+    ShowingResult --> Typing : Operand / StartNew
+    ShowingResult --> Typing : Operator / ContinueFromAns
+    ShowingResult --> Typing : Negate / NegateAns
+    ShowingResult --> Typing : LoadOk / Replace
+    ShowingResult --> ShowingResult : EqualsOk, EqualsError, BackspaceToEmpty, BackspaceKeep
+    ShowingResult --> Empty : Clear, LoadEmpty
+    Error --> Typing : Operand, Operator, Negate / ClearAndAppend
+    Error --> Typing : LoadOk / ClearAndReplace
+    Error --> Empty : EqualsOk, EqualsError, Clear, BackspaceToEmpty, BackspaceKeep, LoadEmpty
 ```
 
-(Load từ Typing/ShowingResult cũng là `Replace → Typing`; để sơ đồ gọn nên chỉ vẽ từ Empty.)
+## 5. Ví dụ và engine
 
-## 4. Ví dụ chạy
-
-| Phím | Trạng thái sau | Biểu thức | Dòng dưới |
+| Phím | Trạng thái | Biểu thức | Kết quả |
 |---|---|---|---|
-| (bắt đầu) | Empty | | 0 |
-| `2` | Typing | `2` | 2 (xem trước) |
-| `+` `3` `×` `4` | Typing | `2+3×4` | 14 (xem trước) |
-| `=` | ShowingResult | `2+3×4 =` | **14** (Ans = 14, ghi lịch sử) |
-| `×` | Typing | `Ans×` | (chưa hợp lệ) |
-| `2` `=` | ShowingResult | `Ans×2 =` | **28** (lịch sử ghi `14×2`) |
-| `7` | Typing | `7` | 7: biểu thức mới |
-| `÷` `0` `=` | Error | `7÷0` (dấu `÷` tô đỏ) | Không thể chia cho 0 (vị trí 1) |
-| `1` | Typing | `1` | 1: lỗi bị xoá, phím được xử lý như Empty |
+| `2+3×4` | Typing | `2+3×4` | Preview 14 |
+| `=` → EqualsOk | ShowingResult | `2+3×4` | 14; ghi lịch sử |
+| `×2` | Typing | `Ans×2` | Preview 28 |
+| `=` | ShowingResult | `Ans×2` | 28; lịch sử ghi `14×2` |
+| `7÷0` rồi `=` → EqualsError | Error | `7÷0` | Không thể chia cho 0 (vị trí 1) |
+| `1` | Typing | `1` | Preview 1, lỗi đã xoá |
+| Backspace → BackspaceToEmpty | Empty | rỗng | 0 |
 
-## 5. Chi tiết hành động
+`IExpressionEngine.Evaluate` không đổi Ans; chỉ CommitResult gọi Commit.
+ScientificEngine giữ DEG/RAD và AnsText = `Ans`. ProgrammerEngine giữ cơ số/word,
+AnsText là giá trị theo cơ số hiện tại. Cả hai dùng cùng hai bảng.
 
-| Hành động | Tác dụng |
-|---|---|
-| Append | nối text. Toán tử hai ngôi gõ ngay sau toán tử hai ngôi sẽ **thay** toán tử cũ (`2+` rồi `×` → `2×`), trừ dấu `−` (để gõ được `2×−3`) |
-| StartNew | biểu thức = text, xoá kết quả cũ |
-| ContinueFromAns | biểu thức = `"Ans" + text` |
-| NegateAns | biểu thức = `"−Ans"` |
-| ToggleNegate | `e` ↔ `−(e)` |
-| DeleteLast | xoá cả tên hàm/hằng một lần (`sin(` → ``, `Ans` → ``), còn lại xoá 1 ký tự |
-| Evaluate | `Calculator.Evaluate` với DEG/RAD và Ans hiện tại. Thành công thì cập nhật Ans và phát sự kiện `Evaluated(biểu thức, kết quả)` để ghi lịch sử; trong biểu thức ghi lịch sử, `Ans` được thay bằng giá trị thật (`Ans×2` → `14×2`) để nạp lại sau này vẫn ra đúng |
-| Replace | biểu thức = text (nạp từ lịch sử) |
-| Replay | ClearAll, về Empty, gọi lại `Process` với cùng phím |
+Preview thử Evaluate khi Typing, lỗi thì để trống. CurrentValue là kết quả vừa tính khi
+ShowingResult, Preview khi Typing, còn lại null. DisplayModel suy ra màn hình hai dòng.
 
-Ngoài bảng, máy còn tính **xem trước** (`Preview`) mỗi khi ở Typing: thử `Evaluate`, lỗi thì để trống. `CurrentValue` (giá trị cho M+, M−, MS) là Ans khi ở ShowingResult, giá trị xem trước khi ở Typing, và null trong các trường hợp còn lại.
-
-## 6. Một bảng, nhiều chế độ: engine tính toán
-
-Bảng chuyển trạng thái **không** gọi thẳng bộ tính. Phần "tính biểu thức" được tách thành interface `IExpressionEngine` (`src/SmartCalc.Core/Input/ExpressionEngine.cs`):
-
-| Thao tác | ScientificEngine (Cơ bản/Khoa học) | ProgrammerEngine (Lập trình) |
-|---|---|---|
-| `Evaluate(expr)` | Lexer → Parser → Evaluator (decimal/double), có DEG/RAD | Lexer (theo cơ số) → ProgrammerParser → IntegerEvaluator (theo WordSize) |
-| `Commit(result)` | Ans = kết quả | ghi nhớ giá trị cuối |
-| `AnsText` (dùng cho ContinueFromAns, NegateAns) | `"Ans"` | chính giá trị theo cơ số đang nhập, vd `"F0"` (ở hệ HEX, chữ `A` là chữ số nên không dùng tên Ans) |
-| `ForHistory(expr)` | thay `Ans` bằng giá trị thật | giữ nguyên |
-
-Nhờ vậy chế độ Lập trình có **đúng cùng** hành vi nhập liệu (Error + phím bất kỳ, nối tiếp sau `=`, xoá lùi, đổi dấu…) mà không phải chép lại bảng. `ProgrammerSession` (Core) thêm các thao tác riêng: đổi cơ số nhập (viết lại giá trị đang hiện theo cơ số mới) và đổi kích thước word (cắt bớt bit cao).
-
-`DisplayModel.From(machine)` suy ra nội dung màn hình 2 dòng từ trạng thái máy, dùng chung cho mọi chế độ có bàn phím.
+`InputTableTests` kiểm giá trị **từng ô của cả hai bảng**, 32 kịch bản phím/nạp từ mọi
+trạng thái và số lần tính/Commit/sự kiện. `InputStateMachineTests` giữ các kịch bản phím cũ,
+kiểm đủ ô theo enum để phát hiện thiếu hàng/cột khi mở rộng.

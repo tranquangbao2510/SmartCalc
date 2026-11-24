@@ -1,65 +1,71 @@
-# Báo cáo kiểm thử SmartCalc
+﻿# Báo cáo kiểm thử SmartCalc
 
-Dự án test: `tests/SmartCalc.Core.Tests` (xUnit, .NET 10). Toàn bộ logic nằm trong `SmartCalc.Core` nên được kiểm thử trực tiếp, không cần giao diện.
+Project: `tests/SmartCalc.Core.Tests` (xUnit, .NET 10). Số liệu lấy từ kết quả chạy test thực tế;
+mỗi bộ dữ liệu Theory/MemberData được tính là một test case.
 
-## Tổng quan
+## Kết quả
 
 | Chỉ số | Giá trị |
-|---|---|
-| Tổng số test case | **679** |
-| Kết quả | **679 đạt, 0 lỗi, 0 bỏ qua** |
-| Phương thức test | 222 (141 `[Fact]` + 81 `[Theory]`, mỗi bộ dữ liệu của `[Theory]` là một case) |
-| Thời gian chạy | ~1 giây |
-| Build | 0 warning, 0 lỗi (Debug và Release; `TreatWarningsAsErrors` bật cho mọi project qua `Directory.Build.props`) |
+|---|---:|
+| Test ban đầu | 679 |
+| Nền sau mục 1 | 620 |
+| Test bổ sung tại mục 6 | 5.648 |
+| Tổng cuối | **6.268** |
+| Đạt / lỗi / bỏ qua | **6.268 / 0 / 0** |
+| Build | **0 warning, 0 lỗi** |
 
-Chạy lại: `dotnet test SmartCalc.sln`. Đếm lại theo lớp: `dotnet test --list-tests`.
+Sau mỗi mục 1–5 đều chạy `dotnet build` (0 warning) và `dotnet test` (620/620 đạt).
+Sau mục 6 và mục 7: build 0 warning, 6.268/6.268 test đạt.
 
-## Các nhóm test
+Chạy lại:
 
-| # | Nhóm | Lớp test (file) | Số case | Nội dung chính |
-|---|---|---|---:|---|
-| 1 | **Lexer (DFA)** | `LexerTests`, `LexerSymbolAliasTests`, `LexerSymbolTokenTests` (`Lexing/LexerTests.cs`) | 78 | số nguyên, số thực, `1.5e-3`, định danh, toán tử, khoảng trắng, ký tự lạ (đúng vị trí), `π` `√` luôn tách riêng, đi từng bước trên bảng DFA |
-| 2 | **Parser** | `ParserTests` (`Parsing/ParserTests.cs`) | 38 | hình dạng cây AST: thứ tự ưu tiên, kết hợp trái/phải, `-2^2`, nhân ngầm, giai thừa, vị trí nút |
-| 3 | **Evaluator + lỗi** | `EvaluatorTests`, `ErrorTests` (`Evaluation/`) | 128 | `2+3*4=14`, `2^3^2=512`, DEG/RAD, `0.1+0.2=0.3`, làm tròn hiển thị; mọi loại lỗi trong SPEC kèm vị trí (ngoặc, thiếu toán hạng, chia 0, miền xác định, giai thừa, tràn số) |
-| 4 | **Máy trạng thái nhập liệu** | `InputStateMachineTests`, `ExpressionEditorTests`, `DisplayModelTests` (`Input/`) | 72 | bảng phủ đủ 28 ô, 4 quy tắc SPEC (ShowingResult + số/toán tử, Error + phím bất kỳ, `=` khi Typing), xoá lùi, ±, nạp lịch sử, thay `Ans` khi ghi lịch sử, nội dung màn hình 2 dòng |
-| 5 | **Chế độ Lập trình** | `ProgrammerLexerTests`, `ProgrammerParserTests`, `IntegerEvaluatorTests`, `ProgrammerSessionTests` (`Programmer/`) | 101 | số theo cơ số HEX/DEC/OCT/BIN, ưu tiên kiểu C, phép bit theo BYTE/WORD/DWORD/QWORD (bù hai, tràn quay vòng), đổi cơ số / kích thước word |
-| 6 | **Đổi đơn vị** | `UnitConverterTests` (`Units/`) | 55 | nhiệt độ (affine, độ không tuyệt đối), 8 nhóm tuyến tính, đổi qua lại mọi cặp đơn vị, đọc/hiển thị số |
-| 7 | **Ngày tháng** | `DateCalculatorTests` (`Dates/`) | 52 | năm nhuận (2000, 1900, 2100), khoảng cách qua 29/02, năm/tháng/tuần/ngày, cộng/trừ, đọc `dd/MM/yyyy` và ISO, thứ trong tuần |
-| 8 | **Vẽ đồ thị** | `PlotFunctionTests`, `FunctionSamplerTests`, `ViewportTests` (`Graphing/`) | 52 | đánh giá f(x) tại nhiều điểm, điểm không xác định → null, ngắt nét ở tiệm cận (tan, 1/x), zoom giữ điểm dưới chuột, kéo, bước lưới |
-| 9 | **Thống kê** | `StatisticsTests` (`Statistics/`) | 29 | n, tổng, trung bình, trung vị, mode (nhiều / không có), min, max, phương sai và độ lệch chuẩn mẫu & tổng thể, đọc dữ liệu |
-| 10 | **Lưu trữ** | `MemoryStoreTests`, `HistoryStoreTests`, `AppSettingsTests` (`StoresTests.cs`) | 14 | bộ nhớ MC/MR/M+/M−/MS, lịch sử JSON (lưu/đọc, tối đa 100 mục), cài đặt, file hỏng |
-| 11 | **Ca biên** | `EmptyInputTests`, `DeepNestingTests`, `ExtremeNumberTests`, `DateBoundaryTests`, `CorruptFileTests`, `CultureIndependenceTests` (`EdgeCaseTests.cs`) | 60 | xem mục dưới |
-| | | | **679** | |
+```powershell
+dotnet build SmartCalc.sln
+dotnet test SmartCalc.sln --logger "trx;LogFileName=verification.trx"
+```
 
-## Ca biên (giai đoạn 6)
+TRX ở `tests/SmartCalc.Core.Tests/TestResults/verification.trx` (đầu ra sinh tự động, được gitignore).
 
-| Lớp | Số case | Kiểm tra |
+## Số test theo nhóm
+
+Các nhóm dưới đây không trùng nhau; test dùng chung số được tách riêng khỏi Lexer/Thống kê/Đổi đơn vị.
+
+| Nhóm | Số case | Lớp test / nội dung |
 |---|---:|---|
-| `EmptyInputTests` | 7 | chuỗi rỗng / chỉ có khoảng trắng ở mọi tầng: lexer, máy tính, lập trình, máy trạng thái, đồ thị, thống kê, đổi đơn vị, ngày |
-| `DeepNestingTests` | 15 | ngoặc lồng 1, 50, 200 mức chạy đúng; 300, 5 000, 100 000 mức → lỗi "lồng quá sâu" (không tràn stack); chuỗi 50 000 dấu `-`; chuỗi `^` dài; chuỗi phẳng `1+1+…` 100 000 phần tử → "quá dài"; dán biểu thức lồng sâu vào máy trạng thái |
-| `ExtremeNumberTests` | 25 | tràn số (`1e308*10`, `10^309`, `170!*171`, 400 chữ số 9) báo đúng vị trí; số lớn hữu hạn (`double.MaxValue`, vượt phạm vi `decimal`); số cực nhỏ không bị hụt về 0; biên `long` ở chế độ lập trình; thống kê / đổi đơn vị vượt `decimal` |
-| `DateBoundaryTests` | 7 | khoảng cách gần năm 9999 và toàn bộ phạm vi 0001–9999; cộng số tuần/ngày/tháng/năm cực lớn; từ chối số âm |
-| `CorruptFileTests` | 3 | `settings.json` có enum sai hoặc `null`; `history.json` có mục `null` hoặc thiếu trường |
-| `CultureIndependenceTests` | 3 | kết quả giống nhau khi máy dùng locale `vi-VN`, `de-DE`, `fr-FR` (dấu thập phân là dấu phẩy) |
+| Lexer, bảng δ và differential | **5.618** | LexerTests 72, LexerSymbolAliasTests 1, LexerSymbolTokenTests 5, LexerTableTests 5.515, NumberDifferentialTests 25 |
+| Đọc số dùng chung | **31** | SharedNumberReaderTests: dấu đầu, số mũ, Unicode, biên decimal, làm tròn/hụt số, lỗi và vị trí, dấu phân tách, chuẩn hoá Đổi đơn vị |
+| Parser | **38** | ParserTests: AST, ưu tiên, kết hợp, nhân ngầm, giai thừa, vị trí |
+| Evaluator và lỗi | **128** | EvaluatorTests 73, ErrorTests 55: decimal/double, DEG/RAD, hàm Builtins, miền xác định, tràn số, lỗi tiếng Việt |
+| Máy nhập liệu | **145** | InputStateMachineTests 46, InputTableTests 73, ExpressionEditorTests 21, DisplayModelTests 5 |
+| Lập trình | **101** | ProgrammerLexerTests 15, ProgrammerParserTests 14, IntegerEvaluatorTests 60, ProgrammerSessionTests 12 |
+| Đổi đơn vị | **55** | UnitConverterTests: 8 nhóm, affine, độ không tuyệt đối, đọc/hiển thị số |
+| Đồ thị | **52** | PlotFunctionTests 31, FunctionSamplerTests 9, ViewportTests 12 |
+| Thống kê | **29** | StatisticsTests: tổng, trung bình, trung vị, mode, phương sai, độ lệch chuẩn |
+| Lưu trữ | **18** | MemoryStoreTests 5, HistoryStoreTests 5, HistoryQueueTests 4, AppSettingsTests 4 |
+| Ca biên | **53** | EmptyInputTests 7, DeepNestingTests 15, ExtremeNumberTests 25, CorruptFileTests 3, CultureIndependenceTests 3 |
+| **Tổng** | **6.268** | |
 
-## Lỗi tìm và sửa trong giai đoạn 6
+## Phủ bảng và differential
 
-Mỗi lỗi đều có test tái hiện. Test được viết trước, chạy thấy thất bại, sau đó mới sửa.
+- **Lexer:** 38 trạng thái × 29 lớp ký tự × 5 cấu hình = **5.510 test từng ô δ**.
+  Kết quả mong đợi lấy từ đặc tả cạnh riêng trong test, không đọc ngược bảng Core.
+  Bao gồm Dead, BadNumber và các trạng thái không tới được ở từng cấu hình.
+  Thêm 5 test kiểm toàn bộ tập kết thúc, loại token và trạng thái bỏ qua.
+- **Differential:** 5 test × **20.000 chuỗi ngẫu nhiên** = **100.000 chuỗi** trên bảng chữ cái
+  số/chữ hex/tiền tố/số mũ/dấu chấm/dấu cộng trừ; độ dài 0–24, seed cố định.
+  Oracle là .NET Regex neo toàn chuỗi, độc lập cho chế độ thường và lập trình 2/8/10/16.
+  Mỗi chuỗi đối chiếu cả DFA trực tiếp và kết quả Lexer có đúng một Number.
+  Regex chỉ dùng trong project test.
+- **Lỗi và nhân ngầm:** 16 test giữ nguyên chính xác thông báo tiếng Việt và Position, kể cả
+  số sai sau tiền tố, tiền tố thiếu chữ số và offset trong biểu thức; 3 test nhân ngầm;
+  1 test xác nhận BadNumber là kết thúc Error dài hơn Number.
+- **Máy nhập liệu:** 40 test kiểm cặp giá trị δ/λ tại mọi ô, tức **80 ô của hai bảng**;
+  32 kịch bản phím/nạp từ cả bốn trạng thái; 1 test số lần Evaluate/Commit/Evaluated và lỗi.
+  Các kịch bản cũ vẫn chạy; test đủ ô dựa trên enum phát hiện thiếu cột/hàng khi mở rộng.
+- **History Queue:** tràn nhiều lần, giữ đúng 100 mục, thứ tự UI/JSON, đọc file cũ quá dài,
+  xoá giữa hàng, xoá mục bằng nhau, sự kiện Changed và Clear.
 
-| # | Lỗi | Hậu quả | Sửa |
-|---|---|---|---|
-| 1 | Parser đệ quy không giới hạn độ sâu | dán `((((…))))` lồng ~100 000 mức → **tràn stack, chương trình tắt ngay** (không bắt được bằng try/catch) | `ParserLimits`: tối đa 256 mức lồng, 1 000 ký hiệu; báo `CalcException` như lỗi thường (cả parser khoa học và lập trình) |
-| 2 | Nhân/chia/luỹ thừa bằng `decimal` bị hụt về 0 | `0.1^50 = 0`, `1e-10/1e27 = 0` (sai) | kết quả `decimal` = 0 trong khi toán hạng khác 0 → dùng kết quả `double` |
-| 3 | `DateCalculator.Difference` gần năm 9999 | ném `ArgumentOutOfRangeException` (vòng đếm tháng thử cộng sang năm 10000) | đếm tối đa 11 tháng, kiểm tra trước khi cộng (`TryAddMonths`) |
-| 4 | `DateCalculator.Add` với số tuần lớn | `weeks * 7` tràn `int` âm thầm → ra ngày sai | tính bằng `long`, quá phạm vi → báo lỗi; số âm → từ chối |
-| 5 | `settings.json` có enum không hợp lệ | theme/đơn vị góc nhận giá trị lạ (vd `Theme = 7`) | kiểm tra `Enum.IsDefined`, sai thì dùng mặc định |
-| 6 | `history.json` có mục `null` / thiếu trường | danh sách lịch sử chứa `null` → lỗi khi hiển thị | bỏ các mục không hợp lệ khi đọc |
-| 7 | `ToggleNegate` so sánh chuỗi theo culture của máy | hành vi có thể khác nhau tuỳ locale | `StringComparison.Ordinal` |
-| 8 | Kéo đồ thị khi mất mouse capture (Alt+Tab) | đồ thị tiếp tục "dính" theo chuột | xử lý `OnLostMouseCapture` |
-| 9 | Đọc clipboard khi app khác đang giữ | `COMException` không được bắt → app có thể đóng | bắt lỗi, bỏ qua lần dán đó |
+## Phạm vi xác minh
 
-Lỗi 8 và 9 nằm ở tầng giao diện (WPF) nên không có unit test; đã kiểm tra bằng đọc code.
-
-## Phạm vi chưa kiểm thử tự động
-
-- Tầng giao diện WPF (XAML, ViewModel, `GraphCanvas`) không có test tự động. Các giai đoạn 3–5 đã kiểm tra bằng cách chạy app thật và chụp màn hình từng chế độ, ở theme sáng/tối và cửa sổ rộng/hẹp. Mọi logic quyết định kết quả đều nằm trong Core và đã có test.
+`TreatWarningsAsErrors` bật qua `Directory.Build.props`. Build gồm cả Core, WPF App và test.
+Kiểm thử tự động xác minh logic Core; chưa chạy kiểm thử tương tác giao diện WPF trong lần sửa này.

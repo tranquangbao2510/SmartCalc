@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Input;
 using SmartCalc.App.ViewModels;
 
@@ -49,7 +49,7 @@ public partial class MainWindow : Window
         }
     }
 
-    // Đang gõ trong ô nhập (Đổi đơn vị, Ngày tháng) thì để ô đó tự xử lý phím
+    // Đang gõ trong ô nhập (Đổi đơn vị) thì để ô đó tự xử lý phím
     private static bool IsTypingInTextBox =>
         Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase { IsVisible: true };
 
@@ -69,8 +69,8 @@ public partial class MainWindow : Window
         var mods = Keyboard.Modifiers;
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
 
-        // Alt+1..7: đổi chế độ (ở mọi nơi, kể cả khi đang gõ trong ô nhập)
-        if (mods == ModifierKeys.Alt && key is >= Key.D1 and <= Key.D7)
+        // Alt+1..6: đổi chế độ (ở mọi nơi, kể cả khi đang gõ trong ô nhập)
+        if (mods == ModifierKeys.Alt && key is >= Key.D1 and <= Key.D6)
         {
             _vm.SelectModeCommand.Execute(key - Key.D0);
             e.Handled = true;
