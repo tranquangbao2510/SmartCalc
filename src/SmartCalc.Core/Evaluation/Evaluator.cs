@@ -178,7 +178,7 @@ public sealed class Evaluator
     {
         double x = Evaluate(call.Argument);
         int p = call.Position;
-        if (!Builtins.FunctionMap.TryGetValue(call.Function, out var function))
+        if (!FunctionTable.FunctionMap.TryGetValue(call.Function, out var function))
             throw new CalcException($"Hàm không xác định '{call.Function}'", p);
         return function(x, _ctx, p);
     }

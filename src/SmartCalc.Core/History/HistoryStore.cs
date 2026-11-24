@@ -9,7 +9,7 @@ public sealed class HistoryStore
 {
     public const int MaxEntries = 100;
 
-    private readonly Queue<HistoryEntry> _entries;
+    private Queue<HistoryEntry> _entries;
     private readonly string? _path;
 
     /// <param name="path">File JSON; null = chỉ giữ trong bộ nhớ (dùng cho test).</param>
@@ -40,16 +40,13 @@ public sealed class HistoryStore
 
     public void Remove(HistoryEntry entry)
     {
-        bool removed = false;
-        int matches = _entries.Count(e => e == entry);
-        int count = _entries.Count;
-        for (int i = 0; i < count; i++)
-        {
-            var current = _entries.Dequeue();
-            if (current == entry && --matches == 0) removed = true;
-            else _entries.Enqueue(current);
-        }
-        if (removed) Persist();
+        var entries = _entries.ToArray();
+        // Queue xếp cũ trước, nên lần khớp cuối chính là mục khớp mới nhất.
+        int newestMatch = Array.LastIndexOf(entries, entry);
+        if (newestMatch < 0) return;
+
+        _entries = new Queue<HistoryEntry>(entries.Where((_, index) => index != newestMatch));
+        Persist();
     }
 
     public void Clear()

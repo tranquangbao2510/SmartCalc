@@ -87,7 +87,7 @@ flowchart LR
 
 - **Lexer** (`Core/Lexing`): DFA M = (Q, Σ, δ, q0, F). Mọi luật số nằm trong bảng δ; trạng thái `BadNumber` sinh Error để token lỗi dài hơn thắng theo quy tắc khớp dài nhất. Giữ nguyên vị trí/thông báo lỗi và nhân ngầm ở chế độ thường. Có cấu hình lập trình cho cơ số 2/8/10/16. Xem [docs/dfa-lexer.md](docs/dfa-lexer.md).
 - **Parser** (`Core/Parsing`): mỗi ký hiệu chưa kết thúc là một hàm `Parse*`. Văn phạm LL(1) đảm bảo thứ tự ưu tiên và tính kết hợp (`^` kết hợp phải, `-2^2 = -4`). Có giới hạn 256 mức lồng nhau để không tràn stack. Chế độ lập trình dùng `ProgrammerParser` với độ ưu tiên kiểu C. Xem [docs/grammar.md](docs/grammar.md).
-- **Evaluator** (`Core/Evaluation`, `Core/Programmer`): duyệt AST; hàm Builtins được tra trong Dictionary tên → Func. Bản số thực dùng decimal/double và DEG/RAD; bản số nguyên dùng bù hai theo kích thước word. Mọi lỗi được báo bằng `CalcException(thông báo tiếng Việt, vị trí)`.
+- **Evaluator** (`Core/Evaluation`, `Core/Programmer`): duyệt AST; hàm tính được tra trong Dictionary tên → Func tại `Evaluation/FunctionTable`. `Parsing/Builtins` giữ tên hàm, hằng và bí danh. Bản số thực dùng decimal/double và DEG/RAD; bản số nguyên dùng bù hai theo kích thước word. Mọi lỗi được báo bằng `CalcException(thông báo tiếng Việt, vị trí)`.
 - **Đọc số dùng chung:** Thống kê và Đổi đơn vị dùng `NumberReader` chạy DFA số của Lexer, sau đó chuyển giá trị decimal. Dấu âm, dấu phân tách và chuẩn hoá dữ liệu giữ nguyên.
 
 ### Giao diện: UI → StateMachine → Core

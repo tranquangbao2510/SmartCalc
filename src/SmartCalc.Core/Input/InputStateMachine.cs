@@ -3,7 +3,24 @@ using SmartCalc.Core.Evaluation;
 
 namespace SmartCalc.Core.Input;
 
-// DFA: chuẩn hoá kết quả đầu vào trước, rồi tra riêng bảng trạng thái và bảng hành động.
+/*
+ * MÁY TRẠNG THÁI NHẬP LIỆU — DFA toàn phần với bảng hành động riêng (máy Mealy).
+ *
+ * Tập trạng thái Q: Empty (rỗng), Typing (đang nhập), ShowingResult (hiện kết quả), Error (lỗi).
+ * Phím thô InputKind được chuẩn hoá thành bảng chữ cái InputSymbol gồm 10 ký hiệu:
+ * Operand, Operator, EqualsOk, EqualsError, Clear, BackspaceToEmpty, BackspaceKeep,
+ * Negate, LoadEmpty, LoadOk.
+ *
+ * Cùng phím '=' có thể tính thành công hoặc lỗi; xoá lùi/nạp có thể cho chuỗi rỗng hoặc còn chữ.
+ * Prepare xác định kết quả này TRƯỚC khi tra bảng, không sửa trạng thái và không ghi Ans.
+ * Nhờ vậy mỗi cặp (trạng thái, ký hiệu) có đúng một đích, không cần điều kiện canh,
+ * nhánh thất bại hay gọi lại Process để xử lý lỗi.
+ *
+ * Table là δ: (InputState, InputSymbol) -> InputState, quyết định trạng thái kế tiếp.
+ * ActionTable là λ: cùng cặp khoá -> InputAction, quyết định thao tác dữ liệu/hiển thị.
+ * Mỗi bảng có đủ 4 × 10 ô, kể cả mọi ký hiệu từ Error. Process tra hai bảng rồi thực thi;
+ * hành động không quyết định lại trạng thái đích. Xem docs/state-machine.md.
+ */
 
 public enum InputState { Empty, Typing, ShowingResult, Error }
 

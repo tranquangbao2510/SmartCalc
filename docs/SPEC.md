@@ -76,8 +76,9 @@ Cài đặt bằng bảng chuyển trạng thái tường minh, không if-else r
   chuẩn hoá khoảng trắng của Đổi đơn vị, cùng phạm vi/làm tròn decimal hiện có.
 - **Cấu trúc dữ liệu:** HistoryStore dùng `Queue<HistoryEntry>`, mục cũ nhất ở đầu; đủ 100 mục thì
   Dequeue trước khi Enqueue. UI và JSON vẫn mới nhất trước. Xoá một mục giữ thứ tự các mục còn lại.
-  Builtins giữ Dictionary tên hàm → `Func<double, EvalContext, int, double>`; Evaluator tra Dictionary
-  để gọi hàm, giữ nguyên DEG/RAD, kiểm tra miền xác định và vị trí lỗi.
+  Evaluation/FunctionTable giữ Dictionary tên hàm → `Func<double, EvalContext, int, double>`; Evaluator tra Dictionary
+  để gọi hàm, giữ nguyên DEG/RAD, kiểm tra miền xác định và vị trí lỗi. Parsing/Builtins chỉ giữ tên hàm,
+  hằng, biến và bí danh, không phụ thuộc phần tính toán trong Evaluation.
 - **Kiểm chứng bảng:** test từng ô Lexer ở chế độ thường và lập trình với cơ số 2/8/10/16; kiểm tra
   giá trị mọi ô của hai bảng nhập liệu và các kịch bản phím cũ. Differential test dùng .NET Regex
   trong project test để đối chiếu ít nhất 20.000 chuỗi ngẫu nhiên mỗi cấu hình. Core không dùng Regex.
