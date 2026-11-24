@@ -19,7 +19,7 @@ chúng thành 10 ký hiệu `InputSymbol`; không cập nhật trạng thái hay
 | Equals khi Typing | EqualsOk / EqualsError | EngineResult / CalcException của lần tính |
 | Equals ở trạng thái khác | EqualsOk | không tính, không có kết quả mới |
 | Clear | Clear | rỗng |
-| Backspace khi Typing | BackspaceToEmpty / BackspaceKeep | biểu thức sau DeleteLast, dựa trên độ dài |
+| Backspace khi Typing | BackspaceToEmpty / BackspaceKeep | biểu thức và con trỏ sau DeleteLast tại con trỏ, dựa trên độ dài biểu thức |
 | Backspace ở trạng thái khác | BackspaceToEmpty | không sửa biểu thức; bảng quyết định tác dụng |
 | Negate | Negate | `−` |
 | Load | LoadEmpty / LoadOk | toàn bộ text nạp, dựa trên độ dài |
@@ -50,12 +50,12 @@ Mọi ô đều ghi trạng thái đích, kể cả các cặp không sinh ra tr
 | Hành động | Tác dụng |
 |---|---|
 | Ignore | giữ dữ liệu |
-| Append | ExpressionEditor.Append; giữ quy tắc thay toán tử trước, ngoại lệ dấu trừ cho `2×−3` |
+| Append | ExpressionEditor.Append chèn tại con trỏ; giữ quy tắc thay toán tử ngay trước con trỏ, ngoại lệ dấu trừ cho `2×−3` |
 | StartNew / Replace | biểu thức = text, xoá kết quả cũ |
 | ContinueFromAns | biểu thức = Engine.AnsText + text, xoá kết quả cũ |
 | NegateAns | biểu thức = `−` + Engine.AnsText, xoá kết quả cũ |
 | ToggleNegate | đổi `e` ↔ `−(e)` |
-| DeleteLast | gán biểu thức đã chuẩn bị; xoá cả tên hàm/hằng hoặc một ký tự như trước |
+| DeleteLast | gán biểu thức/con trỏ đã chuẩn bị; xoá tên hàm/hằng hoặc ký tự ngay trước con trỏ, xoá cả khuôn nếu rỗng |
 | CommitResult | lấy ForHistory trước Commit; ghi kết quả/Ans, xoá lỗi, phát Evaluated đúng một lần |
 | ShowError | giữ biểu thức, xoá kết quả cũ, lấy nguyên Message/Position từ CalcException |
 | ClearAll | xoá biểu thức, kết quả và lỗi; không xoá Ans của engine |
@@ -113,3 +113,43 @@ ShowingResult, Preview khi Typing, còn lại null. DisplayModel suy ra màn hì
 `InputTableTests` kiểm giá trị **từng ô của cả hai bảng**, 32 kịch bản phím/nạp từ mọi
 trạng thái và số lần tính/Commit/sự kiện. `InputStateMachineTests` giữ các kịch bản phím cũ,
 kiểm đủ ô theo enum để phát hiện thiếu hàng/cột khi mở rộng.
+
+## 6. Con trỏ là dữ liệu soạn thảo
+
+`CursorPosition` thuộc đoạn **0..Expression.Length** trong chuỗi gốc. Nó là dữ liệu soạn thảo,
+**không phải trạng thái của DFA**: Q vẫn gồm đúng Empty, Typing, ShowingResult, Error;
+Σ vẫn là 10 InputSymbol. Bảng δ và bảng hành động ở trên giữ nguyên đủ 40 ô mỗi bảng.
+
+Các hàm thuần `ExpressionEditor.Append/DeleteLast/ToggleNegate` nhận biểu thức và vị trí,
+trả về `(Expression, CursorPosition)`. Các overload cũ gọi ở cuối chuỗi để giữ tương thích.
+Prepare của Backspace chuẩn bị cả chuỗi và con trỏ rồi mới chọn BackspaceToEmpty/BackspaceKeep;
+hành động chỉ gán dữ liệu, không chọn lại trạng thái.
+
+`MoveLeft`, `MoveRight`, `Home`, `End`, `SetCursorPosition` là lệnh soạn thảo ngoài hai bảng,
+chỉ đổi con trỏ khi Empty/Typing, không gọi engine, không đổi trạng thái hay Ans.
+ShowingResult/Error bỏ qua các lệnh này. Ranh giới di chuyển gom trọn `sin(`, `abs(`, `Ans`,
+`pi`, `√(` và `^(`; không dừng giữa chữ. Click lên ký tự được đưa về ranh giới gần nhất.
+
+| Thao tác | Vị trí con trỏ sau thao tác |
+|---|---|
+| Append | sau text chèn; với khuôn kết thúc `()` thì nằm giữa hai ngoặc |
+| Gõ `)` trước `)` có sẵn | qua ngoặc đóng, không thêm ký tự |
+| DeleteLast | đầu phần vừa xoá; sau `abs(`/`sin(`/`^(` rỗng thì xoá luôn ngoặc đóng |
+| StartNew / ContinueFromAns | cuối chuỗi mới; nếu phím là khuôn thì đặt trong khuôn mới |
+| NegateAns / Replace / ToggleNegate | cuối chuỗi mới; nạp lịch sử không tự mở khuôn |
+| ClearAll | 0 |
+
+Phím hàm ảo gửi `abs()`, `sin()`, `cos()`, `tan()`, `ln()`, `log()`, `√()`…;
+xʸ gửi `^()`. Phím XOR của Lập trình tiếp tục gửi `^`. Chuỗi gõ/dán đầy đủ không bị
+tự thêm dấu ngoặc; vị trí con trỏ không được lưu vào lịch sử JSON hay thay cho text copy/paste.
+Bấm `=` khi con trỏ còn trong khuôn vẫn tính toàn bộ Expression, gồm ngoặc đóng tự chèn.
+
+`ExpressionLayout` nhận thêm vị trí con trỏ tùy chọn, trả về phần tử Caret có tầng mũ tương ứng;
+`abs()` hiện hai dấu trị tuyệt đối với placeholder ở giữa, `2^()` có placeholder ở tầng mũ.
+Ranh giới trước/sau ngoặc mũ bị ẩn được ghi riêng để con trỏ không nhảy sai tầng khi lồng nhau.
+Chèn phần tử Caret cập nhật chỉ số ánh xạ lỗi; ký tự tô đỏ vẫn theo chuỗi gốc.
+WPF dựng vạch màu nhấn với animation nhấp nháy, chỉ bật khi Empty/Typing; lịch sử không có con trỏ.
+
+`CursorEditingTests.cs` kiểm các hàm thuần, điều hướng, xoá khuôn, chèn giữa chuỗi,
+các kịch bản `abs(8)`, `abs(8)+2`, `2^(3)+1`, `abs(−3)×2`, `sin(30)+1`,
+Lập trình giữ XOR và con trỏ ở từng tầng mũ.

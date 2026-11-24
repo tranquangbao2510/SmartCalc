@@ -161,11 +161,11 @@ public partial class MainViewModel : KeypadViewModel
     public string TanLabel => IsSecond ? "tan⁻¹" : "tan";
     public string LnLabel => IsSecond ? "eˣ" : "ln";
     public string LogLabel => IsSecond ? "10ˣ" : "log";
-    public string SinInsert => IsSecond ? "asin(" : "sin(";
-    public string CosInsert => IsSecond ? "acos(" : "cos(";
-    public string TanInsert => IsSecond ? "atan(" : "tan(";
-    public string LnInsert => IsSecond ? "e^(" : "ln(";
-    public string LogInsert => IsSecond ? "10^(" : "log(";
+    public string SinInsert => IsSecond ? "asin()" : "sin()";
+    public string CosInsert => IsSecond ? "acos()" : "cos()";
+    public string TanInsert => IsSecond ? "atan()" : "tan()";
+    public string LnInsert => IsSecond ? "e^()" : "ln()";
+    public string LogInsert => IsSecond ? "10^()" : "log()";
 
     // ============================ Bộ nhớ ============================
     public ObservableCollection<MemoryItemViewModel> MemoryItems { get; } = [];

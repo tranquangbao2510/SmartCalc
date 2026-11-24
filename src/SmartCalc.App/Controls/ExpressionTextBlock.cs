@@ -1,6 +1,8 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media.Animation;
 using SmartCalc.Core.Input;
 
 namespace SmartCalc.App.Controls;
@@ -16,6 +18,28 @@ public sealed class ExpressionTextBlock : TextBlock
         nameof(MathNotation), typeof(bool), typeof(ExpressionTextBlock), new PropertyMetadata(true, RebuildOnChange));
     public static readonly DependencyProperty ShowEqualsProperty = DependencyProperty.Register(
         nameof(ShowEquals), typeof(bool), typeof(ExpressionTextBlock), new PropertyMetadata(false, RebuildOnChange));
+    public static readonly DependencyProperty CursorPositionProperty = DependencyProperty.Register(
+        nameof(CursorPosition), typeof(int), typeof(ExpressionTextBlock), new PropertyMetadata(0, RebuildOnChange));
+    public static readonly DependencyProperty ShowCaretProperty = DependencyProperty.Register(
+        nameof(ShowCaret), typeof(bool), typeof(ExpressionTextBlock), new PropertyMetadata(false, RebuildOnChange));
+    public static readonly DependencyProperty SetCursorCommandProperty = DependencyProperty.Register(
+        nameof(SetCursorCommand), typeof(ICommand), typeof(ExpressionTextBlock));
+
+    public int CursorPosition
+    {
+        get => (int)GetValue(CursorPositionProperty);
+        set => SetValue(CursorPositionProperty, value);
+    }
+    public bool ShowCaret
+    {
+        get => (bool)GetValue(ShowCaretProperty);
+        set => SetValue(ShowCaretProperty, value);
+    }
+    public ICommand? SetCursorCommand
+    {
+        get => (ICommand?)GetValue(SetCursorCommandProperty);
+        set => SetValue(SetCursorCommandProperty, value);
+    }
 
     public string ExpressionSource
     {
@@ -50,7 +74,8 @@ public sealed class ExpressionTextBlock : TextBlock
 
     private void Rebuild()
     {
-        var elements = ExpressionLayout.Create(ExpressionSource ?? "", MathNotation, ErrorPosition).Elements;
+        var elements = ExpressionLayout.Create(ExpressionSource ?? "", MathNotation, ErrorPosition,
+            ShowCaret ? CursorPosition : -1).Elements;
         Inlines.Clear();
         int index = 0;
         AppendLevel(this, elements, ref index, 0);
@@ -78,7 +103,17 @@ public sealed class ExpressionTextBlock : TextBlock
                 continue;
             }
 
-            if (element.Kind == ExpressionElementKind.Placeholder)
+            if (element.Kind == ExpressionElementKind.Caret)
+            {
+                var caret = new Border { Width = 1.5, Height = block.FontSize, Margin = new Thickness(0.5, 0, 0.5, 0) };
+                caret.SetResourceReference(Border.BackgroundProperty, "AccentBrush");
+                var blink = new DoubleAnimationUsingKeyFrames { Duration = TimeSpan.FromSeconds(1), RepeatBehavior = RepeatBehavior.Forever };
+                blink.KeyFrames.Add(new DiscreteDoubleKeyFrame(1, KeyTime.FromTimeSpan(TimeSpan.Zero)));
+                blink.KeyFrames.Add(new DiscreteDoubleKeyFrame(0, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(.5))));
+                caret.BeginAnimation(OpacityProperty, blink);
+                block.Inlines.Add(new InlineUIContainer(caret));
+            }
+            else if (element.Kind == ExpressionElementKind.Placeholder)
             {
                 var placeholder = new Border
                 {
@@ -93,6 +128,7 @@ public sealed class ExpressionTextBlock : TextBlock
                     placeholder.SetResourceReference(Border.BackgroundProperty, "ErrorSoftBg");
                 }
                 block.Inlines.Add(new InlineUIContainer(placeholder));
+                placeholder.MouseLeftButtonDown += (_, e) => RequestCursor(element.SourceStart, e);
             }
             else
             {
@@ -104,8 +140,23 @@ public sealed class ExpressionTextBlock : TextBlock
                     run.TextDecorations = System.Windows.TextDecorations.Underline;
                 }
                 block.Inlines.Add(run);
+                run.MouseLeftButtonDown += (_, e) =>
+                {
+                    var left = run.ContentStart.GetCharacterRect(LogicalDirection.Forward);
+                    var right = run.ContentEnd.GetCharacterRect(LogicalDirection.Backward);
+                    int position = e.GetPosition(block).X < (left.Left + right.Right) / 2
+                        ? element.SourceStart : element.SourceStart + element.SourceLength;
+                    RequestCursor(position, e);
+                };
             }
             index++;
         }
+    }
+
+    private void RequestCursor(int position, MouseButtonEventArgs e)
+    {
+        if (!ShowCaret || SetCursorCommand?.CanExecute(position) != true) return;
+        SetCursorCommand.Execute(position);
+        e.Handled = true;
     }
 }

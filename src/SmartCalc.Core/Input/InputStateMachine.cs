@@ -180,6 +180,25 @@ public sealed class InputStateMachine
     /// <summary>Biểu thức đang gõ / vừa tính (dòng trên màn hình).</summary>
     public string Expression { get; private set; } = "";
 
+    /// <summary>Dữ liệu soạn thảo trong chuỗi gốc, không phải trạng thái hay ký hiệu của DFA.</summary>
+    public int CursorPosition { get; private set; }
+
+    public void MoveLeft() => MoveCursor(ExpressionEditor.MoveLeft);
+    public void MoveRight() => MoveCursor(ExpressionEditor.MoveRight);
+    public void Home() => MoveCursor(ExpressionEditor.Home);
+    public void End() => MoveCursor(ExpressionEditor.End);
+    public void SetCursorPosition(int position)
+    {
+        if (State is InputState.Typing or InputState.Empty)
+            CursorPosition = ExpressionEditor.SetCursor(Expression, position).CursorPosition;
+    }
+
+    private void MoveCursor(Func<string, int, (string Expression, int CursorPosition)> move)
+    {
+        if (State is InputState.Typing or InputState.Empty)
+            CursorPosition = move(Expression, CursorPosition).CursorPosition;
+    }
+
     /// <summary>Kết quả đã định dạng (khi ShowingResult).</summary>
     public string Result => _last?.Display ?? "";
 
@@ -210,7 +229,8 @@ public sealed class InputStateMachine
     public event Action<string, string>? Evaluated;
 
     // ======================= XỬ LÝ =======================
-    private sealed record PreparedInput(InputSymbol Symbol, string Text = "", EngineResult? Result = null, CalcException? Error = null);
+    private sealed record PreparedInput(InputSymbol Symbol, string Text = "", EngineResult? Result = null,
+        CalcException? Error = null, int Cursor = 0);
 
     public InputState Process(InputEvent input)
     {
@@ -235,8 +255,9 @@ public sealed class InputStateMachine
                 try { return new(InputSymbol.EqualsOk, Result: Engine.Evaluate(Expression)); }
                 catch (CalcException ex) { return new(InputSymbol.EqualsError, Error: ex); }
             case InputKind.Backspace:
-                string rest = State == InputState.Typing ? ExpressionEditor.DeleteLast(Expression) : "";
-                return new(rest.Length == 0 ? InputSymbol.BackspaceToEmpty : InputSymbol.BackspaceKeep, rest);
+                var edit = State == InputState.Typing ? ExpressionEditor.DeleteLast(Expression, CursorPosition) : (Expression: "", CursorPosition: 0);
+                return new(edit.Expression.Length == 0 ? InputSymbol.BackspaceToEmpty : InputSymbol.BackspaceKeep,
+                    edit.Expression, Cursor: edit.CursorPosition);
             case InputKind.Load:
                 return new(input.Text.Length == 0 ? InputSymbol.LoadEmpty : InputSymbol.LoadOk, input.Text);
             case InputKind.Operand: return new(InputSymbol.Operand, input.Text);
@@ -250,6 +271,7 @@ public sealed class InputStateMachine
     private void ClearAll()
     {
         Expression = "";
+        CursorPosition = 0;
         _last = null;
         ErrorMessage = "";
         ErrorPosition = -1;
@@ -261,27 +283,33 @@ public sealed class InputStateMachine
         {
             case InputAction.Ignore: break;
             case InputAction.Append:
-                Expression = ExpressionEditor.Append(Expression, input.Text);
+                (Expression, CursorPosition) = ExpressionEditor.Append(Expression, CursorPosition, input.Text);
                 break;
             case InputAction.ClearAndAppend:
                 ClearAll();
-                Expression = ExpressionEditor.Append(Expression, input.Text);
+                (Expression, CursorPosition) = ExpressionEditor.Append(Expression, CursorPosition, input.Text);
                 break;
             case InputAction.StartNew:
+                (Expression, CursorPosition) = ExpressionEditor.Append("", 0, input.Text);
+                _last = null;
+                break;
             case InputAction.Replace:
                 Expression = input.Text;
+                CursorPosition = Expression.Length;
                 _last = null;
                 break;
             case InputAction.ClearAndReplace:
                 ClearAll();
                 Expression = input.Text;
+                CursorPosition = Expression.Length;
                 break;
             case InputAction.ContinueFromAns:
-                Expression = Engine.AnsText + input.Text;
+                (Expression, CursorPosition) = ExpressionEditor.Append(Engine.AnsText, Engine.AnsText.Length, input.Text);
                 _last = null;
                 break;
             case InputAction.NegateAns:
                 Expression = "\u2212" + Engine.AnsText;
+                CursorPosition = Expression.Length;
                 _last = null;
                 break;
             case InputAction.CommitResult:
@@ -298,8 +326,13 @@ public sealed class InputStateMachine
                 ErrorPosition = input.Error.Position;
                 break;
             case InputAction.ClearAll: ClearAll(); break;
-            case InputAction.DeleteLast: Expression = input.Text; break;
-            case InputAction.ToggleNegate: Expression = ExpressionEditor.ToggleNegate(Expression); break;
+            case InputAction.DeleteLast:
+                Expression = input.Text;
+                CursorPosition = input.Cursor;
+                break;
+            case InputAction.ToggleNegate:
+                (Expression, CursorPosition) = ExpressionEditor.ToggleNegate(Expression, CursorPosition);
+                break;
             default: throw new ArgumentOutOfRangeException(nameof(action));
         }
     }

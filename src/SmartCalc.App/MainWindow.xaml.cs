@@ -98,6 +98,22 @@ public partial class MainWindow : Window
 
         switch (key)
         {
+            case Key.Left:
+                keypad.MoveLeftCommand.Execute(null);
+                e.Handled = true;
+                break;
+            case Key.Right:
+                keypad.MoveRightCommand.Execute(null);
+                e.Handled = true;
+                break;
+            case Key.Home:
+                keypad.HomeCommand.Execute(null);
+                e.Handled = true;
+                break;
+            case Key.End:
+                keypad.EndCommand.Execute(null);
+                e.Handled = true;
+                break;
             case Key.Enter:
                 keypad.EvaluateCommand.Execute(null);
                 e.Handled = true;

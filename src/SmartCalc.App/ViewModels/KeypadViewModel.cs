@@ -30,6 +30,8 @@ public abstract partial class KeypadViewModel : ObservableObject
     public string ExpressionSource => Machine.Expression;
     public int ExpressionErrorPosition => Machine.State == InputState.Error ? Machine.ErrorPosition : -1;
     public bool ShowExpressionEquals => Machine.State == InputState.ShowingResult;
+    public int CursorPosition => Machine.CursorPosition;
+    public bool ShowExpressionCursor => Machine.State is InputState.Empty or InputState.Typing;
 
     /// <summary>Text để Ctrl+C: kết quả nếu có, ngược lại biểu thức.</summary>
     public string CopyText => State switch
@@ -52,6 +54,8 @@ public abstract partial class KeypadViewModel : ObservableObject
         OnPropertyChanged(nameof(ExpressionSource));
         OnPropertyChanged(nameof(ExpressionErrorPosition));
         OnPropertyChanged(nameof(ShowExpressionEquals));
+        OnPropertyChanged(nameof(CursorPosition));
+        OnPropertyChanged(nameof(ShowExpressionCursor));
         OnDisplaySynced();
     }
 
@@ -75,6 +79,19 @@ public abstract partial class KeypadViewModel : ObservableObject
     [RelayCommand] private void Clear() => Process(InputEvent.Clear);
     [RelayCommand] private void Backspace() => Process(InputEvent.Backspace);
     [RelayCommand] private void Negate() => Process(InputEvent.Negate);
+
+    private void MoveCursor(Action move)
+    {
+        if (!AcceptsInput) return;
+        move();
+        SyncDisplay();
+    }
+
+    [RelayCommand] private void MoveLeft() => MoveCursor(Machine.MoveLeft);
+    [RelayCommand] private void MoveRight() => MoveCursor(Machine.MoveRight);
+    [RelayCommand] private void Home() => MoveCursor(Machine.Home);
+    [RelayCommand] private void End() => MoveCursor(Machine.End);
+    [RelayCommand] private void SetCursor(int position) => MoveCursor(() => Machine.SetCursorPosition(position));
 
     /// <summary>Ký tự gõ từ bàn phím -> text đưa vào biểu thức (null = bỏ qua). Mỗi chế độ ánh xạ riêng.</summary>
     protected abstract string? MapChar(char c);

@@ -9,28 +9,76 @@ public static class ExpressionEditor
     private static bool IsBinaryOperator(char c) => c is '+' or '-' or '−' or '*' or '×' or '/' or '÷' or '^' or '%';
 
     public static string Append(string expression, string text)
+        => Append(expression, expression.Length, text).Expression;
+
+    /// <summary>Chèn tại con trỏ; khuôn kết thúc bằng () đặt con trỏ vào trong.</summary>
+    public static (string Expression, int CursorPosition) Append(string expression, int cursorPosition, string text)
     {
-        if (text.Length == 1 && expression.Length > 0
+        int cursor = Math.Clamp(cursorPosition, 0, expression.Length);
+        if (text == ")" && cursor < expression.Length && expression[cursor] == ')')
+            return (expression, cursor + 1);
+
+        if ((text.Length == 1 || text == "^()") && cursor > 0
             && IsBinaryOperator(text[0]) && text[0] is not ('-' or '−')
-            && IsBinaryOperator(expression[^1]))
+            && IsBinaryOperator(expression[cursor - 1]))
         {
-            return expression[..^1] + text;
+            expression = expression.Remove(--cursor, 1);
         }
-        return expression + text;
+        string result = expression.Insert(cursor, text);
+        int next = cursor + text.Length;
+        if (text.EndsWith("()", StringComparison.Ordinal)) next--;
+        return (result, next);
     }
 
     /// <summary>Xoá phần tử cuối: cả tên hàm "sin(" hoặc tên "Ans"/"pi" một lần, còn lại xoá 1 ký tự.</summary>
     public static string DeleteLast(string expression)
+        => DeleteLast(expression, expression.Length).Expression;
+
+    public static (string Expression, int CursorPosition) DeleteLast(string expression, int cursorPosition)
     {
-        if (expression.Length == 0) return expression;
+        int cursor = Math.Clamp(cursorPosition, 0, expression.Length);
+        if (cursor == 0) return (expression, 0);
+        int start = MoveLeft(expression, cursor).CursorPosition;
+        int end = cursor;
+        if (expression[cursor - 1] == '(' && cursor < expression.Length && expression[cursor] == ')') end++;
+        return (expression.Remove(start, end - start), start);
+    }
 
-        int end = expression.Length;
-        if (expression[^1] == '(') end--;           // "sin(" -> xét phần chữ trước '('
-        int start = end;
-        while (start > 0 && char.IsAsciiLetter(expression[start - 1])) start--;
+    /// <summary>Ranh giới soạn thảo: không dừng giữa tên hàm/hằng, √( hoặc ^(.</summary>
+    public static IReadOnlyList<int> CursorStops(string expression)
+    {
+        var stops = new List<int> { 0 };
+        int i = 0;
+        while (i < expression.Length)
+        {
+            if (char.IsAsciiLetter(expression[i]))
+            {
+                while (i < expression.Length && char.IsAsciiLetter(expression[i])) i++;
+                if (i < expression.Length && expression[i] == '(') i++;
+            }
+            else if (expression[i] is '^' or '√' && i + 1 < expression.Length && expression[i + 1] == '(') i += 2;
+            else i++;
+            stops.Add(i);
+        }
+        return stops.AsReadOnly();
+    }
 
-        // Có chữ cái liền trước (tên hàm/hằng) -> xoá cả tên; nếu không chỉ xoá 1 ký tự
-        return start < end ? expression[..start] : expression[..^1];
+    public static (string Expression, int CursorPosition) MoveLeft(string expression, int cursorPosition) =>
+        (expression, CursorStops(expression).LastOrDefault(p => p < Math.Clamp(cursorPosition, 0, expression.Length)));
+
+    public static (string Expression, int CursorPosition) MoveRight(string expression, int cursorPosition) =>
+        (expression, CursorStops(expression).FirstOrDefault(p => p > Math.Clamp(cursorPosition, 0, expression.Length), expression.Length));
+
+    public static (string Expression, int CursorPosition) Home(string expression, int cursorPosition) => (expression, 0);
+    public static (string Expression, int CursorPosition) End(string expression, int cursorPosition) => (expression, expression.Length);
+
+    public static (string Expression, int CursorPosition) SetCursor(string expression, int cursorPosition) =>
+        (expression, CursorStops(expression).MinBy(p => Math.Abs((long)p - cursorPosition)));
+
+    public static (string Expression, int CursorPosition) ToggleNegate(string expression, int cursorPosition)
+    {
+        string result = ToggleNegate(expression);
+        return (result, result.Length);
     }
 
     /// <summary>Đổi dấu cả biểu thức: e -> −(e), và −(e) -> e.</summary>

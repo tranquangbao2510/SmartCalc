@@ -3,7 +3,7 @@ using SmartCalc.Core.Lexing;
 
 namespace SmartCalc.Core.Input;
 
-public enum ExpressionElementKind { Text, AbsoluteBar, Placeholder }
+public enum ExpressionElementKind { Text, AbsoluteBar, Placeholder, Caret }
 
 /// <summary>Một phần tử hiển thị; vị trí/độ dài luôn tính trên chuỗi gốc, không phải text đã trình bày.</summary>
 public sealed record ExpressionElement(
@@ -25,7 +25,8 @@ public sealed class ExpressionLayout
     public bool IsRawText { get; }
 
     private ExpressionLayout(string source, List<ExpressionElement> elements, bool raw, int errorPosition,
-        IReadOnlyDictionary<int, int>? hiddenTargets = null)
+        IReadOnlyDictionary<int, int>? hiddenTargets = null, int cursorPosition = -1,
+        IReadOnlyDictionary<int, int>? cursorLevels = null)
     {
         IsRawText = raw;
         _sourceMap = MapSource(source.Length, elements, hiddenTargets);
@@ -41,6 +42,19 @@ public sealed class ExpressionLayout
             }
             elements[marked] = elements[marked] with { IsError = true };
         }
+        if (cursorPosition >= 0 && cursorPosition <= source.Length)
+        {
+            int at = elements.FindIndex(e => e.SourceStart >= cursorPosition);
+            if (at < 0) at = elements.Count;
+            int level = at < elements.Count ? elements[at].SuperscriptLevel : elements.LastOrDefault()?.SuperscriptLevel ?? 0;
+            if (cursorPosition < source.Length && source[cursorPosition] == '^')
+                level = at > 0 ? elements[at - 1].SuperscriptLevel : 0;
+            // Ngoặc mũ bị ẩn vẫn phân biệt vị trí bên trong/bên ngoài, kể cả mũ lồng nhau.
+            if (cursorLevels?.TryGetValue(cursorPosition, out int specifiedLevel) == true) level = specifiedLevel;
+            elements.Insert(at, new("", cursorPosition, 0, level, ExpressionElementKind.Caret));
+            for (int p = 0; p < _sourceMap.Length; p++)
+                if (_sourceMap[p] >= at) _sourceMap[p]++;
+        }
         Elements = elements.AsReadOnly();
     }
 
@@ -48,7 +62,7 @@ public sealed class ExpressionLayout
     public int FindElement(int sourcePosition) =>
         sourcePosition >= 0 && sourcePosition < _sourceMap.Length ? _sourceMap[sourcePosition] : -1;
 
-    public static ExpressionLayout Create(string source, bool mathNotation = true, int errorPosition = -1)
+    public static ExpressionLayout Create(string source, bool mathNotation = true, int errorPosition = -1, int cursorPosition = -1)
     {
         ArgumentNullException.ThrowIfNull(source);
         if (mathNotation)
@@ -56,14 +70,14 @@ public sealed class ExpressionLayout
             try
             {
                 var builder = new Builder(source, Lexer.Tokenize(source));
-                return new(source, builder.Build(), false, errorPosition, builder.HiddenTargets);
+                return new(source, builder.Build(), false, errorPosition, builder.HiddenTargets, cursorPosition, builder.CursorLevels);
             }
             catch (CalcException) { /* Lexer không nhận chuỗi: hiện nguyên text để vẫn thấy chỗ sai. */ }
             catch (LayoutLimitException) { /* Giới hạn đệ quy hiển thị khi dán chuỗi quá sâu. */ }
         }
 
         var raw = source.Select((c, i) => new ExpressionElement(c.ToString(), i, 1)).ToList();
-        return new(source, raw, true, errorPosition);
+        return new(source, raw, true, errorPosition, cursorPosition: cursorPosition);
     }
 
     private static int[] MapSource(int length, List<ExpressionElement> elements, IReadOnlyDictionary<int, int>? hiddenTargets)
@@ -101,6 +115,7 @@ public sealed class ExpressionLayout
         private int _index;
         private int _cursor;
         public Dictionary<int, int> HiddenTargets { get; } = [];
+        public Dictionary<int, int> CursorLevels { get; } = [];
         private int Count => _tokens.Count - 1; // bỏ End
 
         public Builder(string source, IReadOnlyList<Token> tokens)
@@ -211,11 +226,16 @@ public sealed class ExpressionLayout
             {
                 TextUntil(opening.Position, level);
                 SkipToken();
+                CursorLevels[opening.Position] = Math.Max(0, level - 1);
+                CursorLevels[opening.Position + 1] = level;
             }
             else ShowToken(level);
 
+            int contentStart = _elements.Count;
             Sequence(innerLimit, level, nesting + 1);
             TextUntil(_tokens[innerLimit].Position, level);
+            if (complete && _elements.Count == contentStart)
+                _elements.Add(new("", _tokens[innerLimit].Position, 0, level, ExpressionElementKind.Placeholder));
             if (complete)
             {
                 if (absolute)
@@ -223,7 +243,13 @@ public sealed class ExpressionLayout
                     _elements.Add(new("|", _tokens[_index].Position, 1, level, ExpressionElementKind.AbsoluteBar));
                     SkipToken();
                 }
-                else if (strip) SkipToken();
+                else if (strip)
+                {
+                    int position = _tokens[_index].Position;
+                    CursorLevels[position] = level;
+                    CursorLevels[position + 1] = Math.Max(0, level - 1);
+                    SkipToken();
+                }
                 else ShowToken(level);
             }
             return complete;

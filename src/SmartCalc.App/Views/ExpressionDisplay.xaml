@@ -13,6 +13,8 @@
         <Viewbox Grid.Row="0" StretchDirection="DownOnly" HorizontalAlignment="Right" VerticalAlignment="Bottom">
             <controls:ExpressionTextBlock ExpressionSource="{Binding ExpressionSource}"
                 ErrorPosition="{Binding ExpressionErrorPosition}" ShowEquals="{Binding ShowExpressionEquals}"
+                CursorPosition="{Binding CursorPosition}" ShowCaret="{Binding ShowExpressionCursor}"
+                SetCursorCommand="{Binding SetCursorCommand}"
                 MathNotation="{Binding MathNotation, RelativeSource={RelativeSource AncestorType=UserControl}}"
                 FontFamily="{StaticResource DisplayFont}" FontSize="22" Foreground="{DynamicResource SubtleTextBrush}"/>
         </Viewbox>
